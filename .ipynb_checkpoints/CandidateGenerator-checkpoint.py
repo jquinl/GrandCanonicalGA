@@ -16,8 +16,11 @@ class CandidateGenerator:
     atomsList: 
         Array containing stoichiometry of atoms to be generated accepts:
             atoms_array = ['Pt6O5','Pt6O6','Pt6O7']
-            atoms_array = [[78]*6+[8]*5,[[78]*6+[8]*6, [78]*6+[8]*7]
+
+            atoms_array = [[('Ti', 4), ('O', 8)],[('Ti', 4), ('O', 9)]]
+            atoms_array = [[('CO2', 3)]]  # 3 CO2 molecules
             atoms_array = [Atoms('CO', positions=[[0, 0, 0], [1.4, 0, 0]])]
+            atoms_array = [[(co, 3)]]
 
     ratio_of_covalent_radii:
         Ratio of covalent radii passed to generate the minimum distance dictionary
@@ -38,6 +41,8 @@ class CandidateGenerator:
         self.atoms_array = self.__get_atoms_array(atoms_array,sort_atoms_by_quantity)
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
+
+
 
     def get_candidate_by_position(self,position,maxiter=None) -> Atoms:
         
@@ -68,8 +73,6 @@ class CandidateGenerator:
 
     def __get_cell_params(self,slab,random_generation_box_size):
         "Gets cell parameters from inputed slab"
-        if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
-        if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
         pos = slab.get_positions()
         cell = slab.get_cell()
         p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
@@ -84,7 +87,7 @@ class CandidateGenerator:
         atoms_result_array = []
         if len(atoms_array) == 0:
             raise Exception("Empty atoms_array")
-        if isinstance(atoms_array[0],Atom):
+        if type(atoms_array[0]) == type(Atom):
             raise Exception("Inputed atoms_array list not deep enough")
         for i in atoms_array:
             atoms_result_array.append(self.__get_atoms_object(i))
@@ -96,13 +99,14 @@ class CandidateGenerator:
         "Gets an atoms object based on user input"
         if isinstance(atoms, Atoms):
             return atoms
-        elif isinstance(atoms, str):
+        elif atoms in atomic_numbers:
+            print(atoms)
             return Atoms(atoms)
-        elif isinstance(atoms,List):
-            for i in atoms:
-                if(i not in atomic_numbers.values()):
-                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
-            return Atoms(numbers=atoms)
+        elif isinstance(atoms, str):
+            return molecule(atoms)
+        elif atoms in atomic_numbers.values():
+            print(atoms)
+            return Atoms(numbers=[atoms])
         else:
             raise ValueError('Cannot parse this element:', atoms)
     
