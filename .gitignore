@@ -3,3 +3,4 @@ ase_env/**
 use_env.sh
 __pycache__
 __pycache__/**
+*.db
