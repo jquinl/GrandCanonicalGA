@@ -72,11 +72,19 @@ class CandidateGenerator:
         if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
         pos = slab.get_positions()
         cell = slab.get_cell()
-        p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
-        v1 = cell[0, :] * random_generation_box_size
-        v2 = cell[1, :] * random_generation_box_size
-        v3 = cell[2, :]
-        v3[2] = 3.
+        if(len(pos) == 0):
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :]
+            v3[2] = 3.
+            p0 = np.array([0,0,0])
+
+        else:
+            p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :]
+            v3[2] = 3.
         return p0,v1,v2,v3
 
     def __get_atoms_array(self,atoms_array,sort_atoms_by_quantity) -> List[Atoms]:
