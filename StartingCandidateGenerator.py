@@ -59,12 +59,22 @@ class StartingCandidateGenerator:
 
         for i in range(number):
             atoms_numbers = np.concatenate((atoms_numbers,self.variable.numbers),axis=None)
-        print(atoms_numbers)
+        
         sg = StartGenerator(self.slab, atoms_numbers, blmin,
                     box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]])
-        
-        return sg.get_new_candidate()
+        atoms = sg.get_new_candidate()
+        atoms.info['stc']= self.get_var_stc(atoms)
 
+        return atoms
+    def get_var_stc(self,atoms) -> int:
+        var_stc = len(atoms)-len(self.slab)-len(self.constant)
+        if(var_stc >= 0 ):
+            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
+                if(i.symbol != self.variable[0].symbol):
+                    raise Exception("Variable type of atoms does not match stored type")
+        else:
+            raise Exception("Negative numer of variable atoms")
+        return var_stc
     def get_random_candidate(self,maxiter=None) -> Atoms:
         "Returns a random structure from all the possible stoichiometries"
         return  self.get_candidate_by_number(number = np.random.choice(self.variable_range,size=1)[0],maxiter=maxiter)
@@ -76,7 +86,7 @@ class StartingCandidateGenerator:
         for i in self.variable_range:
             for j in range(single_population_size):
                 atoms = self.get_candidate_by_number(i,maxiter=maxiter)
-                atoms.info['stc'] = i
+                #atoms.info['stc'] = i
                 starting_population.append(atoms)
         return starting_population
     "Private Methods do not touch"
