@@ -21,7 +21,7 @@ class CrossOperation:
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.stc_change_chance = stc_change_chance
         self.rng = rng
-        self.minfrac = minfrac
+        self.minfrac = self.__get_minfrac(minfrac)
 
         uniques = self.constant.copy()
         uniques.extend(self.variable)
@@ -103,14 +103,13 @@ class CrossOperation:
             if(self.get_var_stc(atoms) not in self.variable_range):
                 continue
             if(var_stc != allowed_stc1 and var_stc != allowed_stc2):
-                    atoms.info['stc']= self.get_var_stc(atoms)
-                    results_array[1] = atoms
+                if(self.rng.rand() > self.stc_change_chance):
                     continue
         
             atoms.info['stc']= self.get_var_stc(atoms)
-            results_array[0] = atoms
+            return atoms
 
-        #Cross loop ends, check results
+        """Cross loop ends, check results
         if(results_array[0] is not None and results_array[1] is not None):
             if(self.rng.rand() < self.stc_change_chance):
                 return results_array[1]
@@ -123,17 +122,20 @@ class CrossOperation:
                 return results_array[1]
             else:
                 return None
-        else:
-            return None
+        """
+        return None
 
     def mantains_ordering(self,atoms):
-        for i in range(len(self.slab)):
-            if(atoms[i].symbol != self.slab[i].symbol):
-                print("Eror in ordering")
-                return False
-        for i in range(len(self.constant)):
-            if(atoms[len(self.slab)+i].symbol != self.constant[i].symbol):
-                return False
+        try:
+            for i in range(len(self.slab)):
+                if(atoms[i].symbol != self.slab[i].symbol):
+                    print("Eror in ordering")
+                    return False
+            for i in range(len(self.constant)):
+                if(atoms[len(self.slab)+i].symbol != self.constant[i].symbol):
+                    return False
+        except:
+            return False
         return True
 
     def get_var_stc(self,atoms) -> int:
@@ -146,7 +148,7 @@ class CrossOperation:
             raise Exception("Negative numer of variable atoms")
         return var_stc
     def __get_range(self,variable_range) -> List[int]:
-        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
+        if nstance(variable_isirange,List) and isinstance(variable_range[0],int):
             return variable_range
         else:
             raise Exception("variable_ range is not al ist of integers")
@@ -181,9 +183,13 @@ class CrossOperation:
         a1_copy = a1.copy()
         a2_copy = a2.copy()
         "Generate constant part first"
+
         for num in self.constant.numbers:
             has_been_added = False
-            for atoms,value in zip([a1_copy,a2_copy,a1_copy,a2_copy],[1,-1,-1,1]):
+            #for atoms,value in zip([a1_copy,a2_copy,a1_copy,a2_copy],[1,-1,-1,1]):
+            len_sys1 = 0
+            len_sys2 = 0
+            for atoms,value,sys in zip([a1_copy,a2_copy],[1,-1],[1,2]):
                 for atom in atoms:
                     if(atom.number == num and not has_been_added):
                         at_vector =  atom.position - cutting_point
@@ -191,6 +197,12 @@ class CrossOperation:
                             atoms_result.append(atom)
                             atom.number = 200
                             has_been_added = True
+                            if(sys == 1): len_sys1 += 1
+                            if(sys == 2): len_sys2 += 1
+        
+        if(self.minfrac is not None):
+            if(self.minfrac > float(float(len_sys1)/len(self.constant))): return None
+            if(self.minfrac > float(float(len_sys2)/len(self.constant))): return None
         
         atoms_result.wrap()
 
@@ -208,3 +220,12 @@ class CrossOperation:
                         has_been_added = True
         atoms_result.wrap()
         return atoms_result
+        
+    def __get_minfrac(self,minfrac):
+        if minfrac is not None:
+            if(isinstance(minfrac,float)):
+                return minfrac
+            else:
+                raise ValueError("Specified minfrac value not a float")
+        else:
+            return None
