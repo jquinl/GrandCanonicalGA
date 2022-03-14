@@ -148,7 +148,7 @@ class CrossOperation:
             raise Exception("Negative numer of variable atoms")
         return var_stc
     def __get_range(self,variable_range) -> List[int]:
-        if nstance(variable_isirange,List) and isinstance(variable_range[0],int):
+        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
             return variable_range
         else:
             raise Exception("variable_ range is not al ist of integers")
