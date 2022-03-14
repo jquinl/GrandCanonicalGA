@@ -89,7 +89,17 @@ class StartingCandidateGenerator:
                 #atoms.info['stc'] = i
                 starting_population.append(atoms)
         return starting_population
-    "Private Methods do not touch"
+    def get_starting_population_single(self,variable_number,population_size=20,maxiter=None,):
+        starting_population = []
+        starting_population_numbers = []
+        if(variable_number in self.variable_range):
+            for j in range(population_size):
+                atoms = self.get_candidate_by_number(variable_number,maxiter=maxiter)
+                starting_population.append(atoms)
+            return starting_population
+        else:
+            raise Exception("Provided variable number not in range")
+    #"Private Methods do not touch"
     def __get_range(self,variable_range) -> List[int]:
         if isinstance(variable_range,List) and isinstance(variable_range[0],int):
             return variable_range
