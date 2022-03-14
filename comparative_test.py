@@ -49,10 +49,10 @@ for i in [0,1,2,3,4,5,7,8,9,10]:
 #---------------------------Define starting population--------------------------------"
     candidateGenerator = SCG(slab,constant,variable_type,variable_range)
     crossing = CO(slab,constant,variable_type,variable_range,stc_change_chance = 0.5)
-    db = DBI('databaseGA.db')
+    db = DBI('databaseGA_{}.db'.format(i))
     population = 25
 
-    starting_pop = candidateGenerator.get_starting_population_single(population_size=population)
+    starting_pop = candidateGenerator.get_starting_population_single(i,population_size=population)
 
     #-----------------------------------Define Calculator----------------------------------------"
 
@@ -94,7 +94,7 @@ for i in [0,1,2,3,4,5,7,8,9,10]:
 
     #--------------------------------------Find better stoich to srtart eval----------------------------
     #Overall fitness value
-    steps = 5
+    steps = 100
     sub_steps = 20
     for i in range(steps):
         for j in range(sub_steps):
