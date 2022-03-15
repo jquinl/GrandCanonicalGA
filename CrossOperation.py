@@ -57,9 +57,8 @@ class CrossOperation:
         a2_copy = a2.copy()
         cell = self.slab.get_cell()
 
-        results_array = [None,None]
         # Run until a valid pairing is made or maxcount pairings are tested.
-        while invalid and results_array[0] is None and counter < maxcount:
+        while invalid and counter < maxcount:
             counter += 1
             
             # Choose direction of cutting plane normal
@@ -95,34 +94,20 @@ class CrossOperation:
                 continue
             if(not self.mantains_ordering(atoms)):
                 continue
-            if(self.get_var_stc(atoms) not in self.variable_range):
+            if(self.__get_var_stc(atoms) not in self.variable_range):
                 continue
             # Passed all the tests
             atoms.wrap()
-            var_stc = self.get_var_stc(atoms)
-            if(self.get_var_stc(atoms) not in self.variable_range):
+            var_stc = self.__get_var_stc(atoms)
+            if(self.__get_var_stc(atoms) not in self.variable_range):
                 continue
             if(var_stc != allowed_stc1 and var_stc != allowed_stc2):
                 if(self.rng.rand() > self.stc_change_chance):
                     continue
         
-            atoms.info['stc']= self.get_var_stc(atoms)
+            atoms.info['stc']= self.__get_var_stc(atoms)
             return atoms
 
-        """Cross loop ends, check results
-        if(results_array[0] is not None and results_array[1] is not None):
-            if(self.rng.rand() < self.stc_change_chance):
-                return results_array[1]
-            else:
-                return results_array[0]
-        elif(results_array[0] is not None and results_array[1] is None):
-            return results_array[0]
-        elif(results_array[0] is None and results_array[1] is not None):
-            if(self.rng.rand() < self.stc_change_chance):
-                return results_array[1]
-            else:
-                return None
-        """
         return None
 
     def mantains_ordering(self,atoms):
@@ -138,34 +123,6 @@ class CrossOperation:
             return False
         return True
 
-    def get_var_stc(self,atoms) -> int:
-        var_stc = len(atoms)-len(self.slab)-len(self.constant)
-        if(var_stc >= 0 ):
-            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
-                if(i.symbol != self.variable[0].symbol):
-                    raise Exception("Variable type of atoms does not match stored type")
-        else:
-            raise Exception("Negative numer of variable atoms")
-        return var_stc
-    def __get_range(self,variable_range) -> List[int]:
-        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
-            return variable_range
-        else:
-            raise Exception("variable_ range is not al ist of integers")
-
-    def __get_atoms_object(self,atoms) -> Atoms:
-        "Gets an atoms object based on user input"
-        if isinstance(atoms, Atoms):
-            return atoms
-        elif isinstance(atoms, str):
-            return Atoms(atoms)
-        elif isinstance(atoms,List):
-            for i in atoms:
-                if(i not in atomic_numbers.values()):
-                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
-            return Atoms(numbers=atoms)
-        else:
-            raise ValueError('Cannot parse this element:', atoms)
 
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):
 
@@ -221,6 +178,36 @@ class CrossOperation:
         atoms_result.wrap()
         return atoms_result
         
+
+    def __get_var_stc(self,atoms) -> int:
+        var_stc = len(atoms)-len(self.slab)-len(self.constant)
+        if(var_stc >= 0 ):
+            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
+                if(i.symbol != self.variable[0].symbol):
+                    raise Exception("Variable type of atoms does not match stored type")
+        else:
+            raise Exception("Negative numer of variable atoms")
+        return var_stc
+    def __get_range(self,variable_range) -> List[int]:
+        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
+            return variable_range
+        else:
+            raise Exception("variable_ range is not al ist of integers")
+
+    def __get_atoms_object(self,atoms) -> Atoms:
+        "Gets an atoms object based on user input"
+        if isinstance(atoms, Atoms):
+            return atoms
+        elif isinstance(atoms, str):
+            return Atoms(atoms)
+        elif isinstance(atoms,List):
+            for i in atoms:
+                if(i not in atomic_numbers.values()):
+                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
+            return Atoms(numbers=atoms)
+        else:
+            raise ValueError('Cannot parse this element:', atoms)
+
     def __get_minfrac(self,minfrac):
         if minfrac is not None:
             if(isinstance(minfrac,float)):

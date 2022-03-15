@@ -48,8 +48,9 @@ class StartingCandidateGenerator:
         var = Atoms()
         for j in range(number):
             var.extend(self.variable)
-        atoms.extend(var)
-        
+        if(len(var) != 0):
+            atoms.extend(var)
+        print(atoms.numbers)
         unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
 
         blmin = closest_distances_generator(atom_numbers=unique_atom_types,
