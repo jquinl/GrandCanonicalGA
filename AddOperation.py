@@ -31,7 +31,7 @@ class CrossOperation:
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
 
 
-    def cross(self, a1, a2):
+    def add(self, a1, a2):
         """Crosses the two atoms objects and returns one"""
 
         allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 

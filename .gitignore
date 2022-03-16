@@ -9,3 +9,5 @@ __pycache__/**
 .ipynb_checkpoints/**
 *.db
 *.traj
+test_set
+test_set/**
