@@ -55,16 +55,17 @@ class CrossOperation:
         maxcount = 1000
         a1_copy = a1.copy()
 
-        rand_atm = int(self.rng.rand(0,allowed_stc1))
+        poppable_indices = np.array([ a for a in np.arange(len(a1)) if a1.numbers[a] == self.variable_number])
+       
         # Run until a valid pairing is made or maxcount pairings are tested.
         while invalid and counter < maxcount:
             counter += 1
-        
             
-            for i in range(allowed_stc1):
-                child = self.get_addition_by_pairing(a1_copy, a2_copy,place = (i+rand_displacement)%allowed_stc2)
-                if atoms_too_close(child, self.blmin):
-                    child = None
+            child = a1_copy().copy()
+
+            rand_atm = int(self.rng.rand(0,len(poppable_indices)))
+            
+            child.pop(poppable_indices[rand_atm])
 
             if child is None:
                 child = self.get_addition_by_random(a1_copy)
@@ -109,86 +110,3 @@ class CrossOperation:
         return True
 
 
-    def get_addition_by_pairing(self,a1,a2,place = 0):
-
-        """Adds a variable atom object to a structure. It gets its position from a second.
-        
-
-        Does not check whether atoms are too close.
-
-        Assumes the 'slab' parts have been removed from the parent
-        structures. Stoichiometry agnostic"""
-        atoms_result= a1.copy()
-        atoms_result.set_cell(self.slab.get_cell())
-
-        a2_copy = a2.copy()
-        variable_atoms = Atom()
-
-        #Check wether the constant part has been correctly created
-        for x,y in zip(self.constant.numbers, atoms_result.numbers):
-            if(x != y):
-                return None
-
-        for atom in a2_copy:
-            if(atom.number == self.variable_number):
-                variable_atoms.append(atom)
-                atom.number = 200
-        
-        if(len(variable_atoms) == 0):
-            return None
-        atoms_result.extend(variable_atoms[place])
-        atoms_result.wrap()
-        return atoms_result
-
-    def get_addition_by_random(self,a1):
-
-        """Adds a variable atom object to a structure. It gets its position from a second.
-        
-
-        Does not check whether atoms are too close.
-
-        Assumes the 'slab' parts have been removed from the parent
-        structures. Stoichiometry agnostic"""
-        atoms_result= a1.copy()
-        atoms_result.set_cell(self.slab.get_cell())
-
-        #Check wether the constant part has been correctly created
-        for x,y in zip(self.constant.numbers, atoms_result.numbers):
-            if(x != y):
-                return None
-        x,y,z = self.rng.rand(),self.rng.rand(),self.rng.rand()
-        atom = Atoms(self.variable_number)
-        atom.set_cell(self.slab.get_cell())
-        atom.set_scaled_positions(np.array([[x,y,z]]))
-        atoms_result.append(atom)
-
-        return atoms_result
-
-    def __get_var_stc(self,atoms) -> int:
-        var_stc = len(atoms)-len(self.slab)-len(self.constant)
-        if(var_stc >= 0 ):
-            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
-                if(i.symbol != self.variable[0].symbol):
-                    raise Exception("Variable type of atoms does not match stored type")
-        else:
-            raise Exception("Negative numer of variable atoms")
-        return var_stc
-    def __get_range(self,variable_range) -> List[int]:
-        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
-            return variable_range
-        else:
-            raise Exception("variable_ range is not al ist of integers")
-
-    def __get_atoms_object(self,atoms) -> Atoms:
-        "Gets an atoms object based on user input"
-        if isinstance(atoms, Atoms):
-            return atoms
-        elif isinstance(atoms, str):
-            return Atoms(atoms)
-        elif isinstance(atoms,List):
-            for i in atoms:
-                if(i not in atomic_numbers.values()):
-                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
-            return Atoms(numbers=atoms)
-        else:
-            raise ValueError('Cannot parse this element:', atoms)

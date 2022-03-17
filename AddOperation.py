@@ -30,7 +30,7 @@ class CrossOperation:
         self.blmin = closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
 
-
+    
     def add(self, a1, a2):
         """Crosses the two atoms objects and returns one"""
 
