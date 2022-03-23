@@ -1,11 +1,11 @@
 from StartingCandidateGenerator import StartingCandidateGenerator as SCG
-from DataBaseInterface import DataBaseInterface as DBI
-from CrossOperation import CrossOperation as CO
+from CoreUtils.DataBaseInterface import DataBaseInterface as DBI
+from Operations.CrossOperation import CrossOperation as CO
 "Import necessary to fix atoms in the slab"
 from ase.constraints import FixAtoms
 from ase import Atoms
 from ase.io import read,write
-from generate_ceo2 import create_ceo2_111 as ceo2Slab
+
 import numpy as np
 from ase.visualize import view
 import numpy as np
@@ -24,7 +24,6 @@ def fitness_function(atoms,env,reference = 0.0,au_energy = 0.0)-> float:
     return fre
 
 #---------------------------Generate static part of the system------------------------------"
-slab = ceo2Slab(number_of_layers=1,repetitions = (5,5,1),vacuum=12.0)
 a = 12.0
 slab = Atoms(cell=[a,a,a],
              pbc=True)

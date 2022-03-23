@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from ase import Atom, Atoms
+from ase import Atoms
 from ase.data import atomic_numbers
 from ase.build import molecule
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
@@ -50,7 +50,6 @@ class StartingCandidateGenerator:
             var.extend(self.variable)
         if(len(var) != 0):
             atoms.extend(var)
-        print(atoms.numbers)
         unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
 
         blmin = closest_distances_generator(atom_numbers=unique_atom_types,

@@ -3,6 +3,7 @@ ase_env/**
 __pycache__
 __pycache__/*
 __pycache__/**
+**/__pycache__/**
 *.db
 .ipynb_checkpoints
 .ipynb_checkpoints/*
