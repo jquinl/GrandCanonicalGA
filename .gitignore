@@ -1,14 +1,13 @@
 ase_env
 ase_env/**
 __pycache__
-__pycache__/*
 __pycache__/**
 **/__pycache__/**
 *.db
 .ipynb_checkpoints
-.ipynb_checkpoints/*
 .ipynb_checkpoints/**
-*.db
-*.traj
+**/.ipynb_checkpoints/**
+**.db
+**.traj
 test_set
 test_set/**

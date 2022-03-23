@@ -3,7 +3,8 @@ from typing import List
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types,atoms_too_close, atoms_too_close_two_sets)
+from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
+
 class OperationsBase:
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
@@ -14,7 +15,7 @@ class OperationsBase:
         self.slab = slab
         self.constant = self.__get_atoms_object(constant)
         self.variable = self.__get_atoms_object(variable)
-        self.variable_number = self.variable.numbers[0]
+        self.variable_number = int(self.variable.numbers[0])
         self.variable_range = self.__get_range(variable_range)
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.rng = rng
@@ -39,7 +40,7 @@ class OperationsBase:
             return False
         return True
 
-    def __get_var_stc(self,atoms) -> int:
+    def get_var_stc(self,atoms) -> int:
         var_stc = len(atoms)-len(self.slab)-len(self.constant)
         if(var_stc >= 0 ):
             for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:

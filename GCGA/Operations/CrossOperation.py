@@ -3,7 +3,7 @@ import numpy as np
 from ase import Atoms
 from ase.ga.utilities import atoms_too_close
 
-from OperationsBase import OperationsBase
+from .OperationsBase import OperationsBase
 class CrossOperation(OperationsBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
@@ -11,7 +11,7 @@ class CrossOperation(OperationsBase):
     """
     def __init__(self, slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random,stc_change_chance = 0.1,minfrac = None,):
-        OperationsBase.__init__(self,slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
+        super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
@@ -79,18 +79,16 @@ class CrossOperation(OperationsBase):
                 continue
             if(not self.mantains_ordering(atoms)):
                 continue
-            if(self.__get_var_stc(atoms) not in self.variable_range):
-                continue
             # Passed all the tests
             atoms.wrap()
-            var_stc = self.__get_var_stc(atoms)
-            if(self.__get_var_stc(atoms) not in self.variable_range):
+            var_stc = self.get_var_stc(atoms)
+            if(var_stc not in self.variable_range):
                 continue
             if(var_stc != allowed_stc1 and var_stc != allowed_stc2):
                 if(self.rng.rand() > self.stc_change_chance):
                     continue
         
-            atoms.info['stc']= self.__get_var_stc(atoms)
+            atoms.info['stc']= self.get_var_stc(atoms)
             return atoms
 
         return None

@@ -1,11 +1,14 @@
 #Import these for the GA code to run
-from StartingCandidateGenerator import StartingCandidateGenerator as SCG
-from CoreUtils.DataBaseInterface import DataBaseInterface as DBI
-from Operations.CrossOperation import CrossOperation as CO
+from GCGA.CoreUtils.StartingCandidateGenerator import StartingCandidateGenerator as SCG
+from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
+from GCGA.Operations.CrossOperation import CrossOperation as CO
+from GCGA.Operations.AddOperation import AddOperation as AD
+from GCGA.Operations.RemoveOperation import RemoveOperation as RM
+
 from ase import Atoms
 import numpy as np
 ###########################
-
+from ase.io import read,write
 #Calculator
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
@@ -38,11 +41,15 @@ constant = Atoms('Pt1')
 variable_type = Atoms('Au')
 #Considered number of variable type atoms n the search"
 variable_range = [1,2,3,4,5,7,8,9,10]
+variable_range_test = [1,2,3,4,5,7,8,9,10,11]
 
 #---------------------------Define starting population--------------------------------"
 
 candidateGenerator = SCG(slab,constant,variable_type,variable_range)
 crossing = CO(slab,constant,variable_type,variable_range,stc_change_chance = 0.5)
+adding = AD(slab,constant,variable_type,variable_range_test)
+removing = RM(slab,constant,variable_type,variable_range)
+
 db = DBI('databaseGA.db')
 population = 25
 
@@ -121,3 +128,15 @@ for i in range(steps):
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
         
 atomslist = db.get_better_candidates(n=2)
+
+print(len(atomslist[0]))
+cand = removing.remove(atomslist[0])
+print(len(cand))
+write('rm.traj',[atomslist[0],cand])
+atomslist = db.get_better_candidates(n=2)
+
+print(len(atomslist[0]))
+cand = adding.add(atomslist[0],atomslist[1])
+print(len(cand))
+write('add.traj',[atomslist[0],cand])
+

@@ -1,14 +1,15 @@
 
+from poplib import POP3_SSL
 import numpy as np
-from OperationsBase import OperationsBase
-class CrossOperation(OperationsBase):
+from .OperationsBase import OperationsBase
+class RemoveOperation(OperationsBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
     def __init__(self, slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random):
-        OperationsBase.__init__(self,slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
+        super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
 
     def remove(self, a1):
         """Crosses the two atoms objects and returns one"""
@@ -26,20 +27,18 @@ class CrossOperation(OperationsBase):
         # Only consider the atoms to optimize
         a1 = a1[len(self.slab) :len(a1)]
         
-  
         counter = 0
         maxcount = 1000
         a1_copy = a1.copy()
 
         poppable_indices = np.array([ a for a in np.arange(len(a1)) if a1.numbers[a] == self.variable_number])
-       
         # Run until a valid pairing is made or maxcount pairings are tested.
         while counter < maxcount:
             counter += 1
             
-            child = a1_copy().copy()
-
-            rand_atm = int(self.rng.rand(0,len(poppable_indices)))
+            child = a1_copy.copy()
+            pop_int = self.rng.randint(0,len(poppable_indices)-1)
+            rand_atm = poppable_indices[pop_int]
             
             child.pop(poppable_indices[rand_atm])
 
@@ -53,6 +52,6 @@ class CrossOperation(OperationsBase):
             # Passed all the tests
             atoms.wrap()
 
-            atoms.info['stc']= self.__get_var_stc(atoms)
+            atoms.info['stc']= self.get_var_stc(atoms)
             return atoms
         return None

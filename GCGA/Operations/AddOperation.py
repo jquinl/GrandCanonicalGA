@@ -1,18 +1,16 @@
-
-
 import numpy as np
-from ase import Atom, Atoms
+from ase import  Atoms
 from ase.ga.utilities import atoms_too_close
 
-from OperationsBase import OperationsBase
-class CrossOperation(OperationsBase):
+from .OperationsBase import OperationsBase
+class AddOperation(OperationsBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
     def __init__(self, slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random):
-        OperationsBase.__init__(self,slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
+        super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
     
     def add(self, a1, a2):
         """Crosses the two atoms objects and returns one"""
@@ -20,7 +18,6 @@ class CrossOperation(OperationsBase):
         allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 
         allowed_stc2 = a2.info['key_value_pairs']['var_stc']
 
-        
         if (len(a1)-len(self.slab)-len(self.constant) not in self.variable_range):
             raise ValueError('Wrong size of structure a1 to optimize')
         if (len(a2)-len(self.slab)-len(self.constant) not in self.variable_range):
@@ -47,7 +44,7 @@ class CrossOperation(OperationsBase):
         while invalid and counter < maxcount:
             counter += 1
         
-            rand_displacement = int(self.rng.rand(0,allowed_stc2))
+            rand_displacement = self.rng.randint(0,allowed_stc2)
             for i in range(allowed_stc2):
                 child = self.get_addition_by_pairing(a1_copy, a2_copy,place = (i+rand_displacement)%allowed_stc2)
                 if atoms_too_close(child, self.blmin):
@@ -56,7 +53,7 @@ class CrossOperation(OperationsBase):
             if child is None:
                 child = self.get_addition_by_random(a1_copy)
 
-            if child in None:
+            if child is None:
                 continue
 
             atoms  = self.slab.copy()
@@ -67,18 +64,12 @@ class CrossOperation(OperationsBase):
                 continue
             if(not self.mantains_ordering(atoms)):
                 continue
-            if(self.__get_var_stc(atoms) not in self.variable_range):
-                continue
+
             # Passed all the tests
             atoms.wrap()
-            var_stc = self.__get_var_stc(atoms)
-            if(self.__get_var_stc(atoms) not in self.variable_range):
-                continue
-            if(var_stc != allowed_stc1 and var_stc != allowed_stc2):
-                if(self.rng.rand() > self.stc_change_chance):
-                    continue
+
         
-            atoms.info['stc']= self.__get_var_stc(atoms)
+            atoms.info['stc']= self.get_var_stc(atoms)
             return atoms
         return None
 
@@ -95,7 +86,7 @@ class CrossOperation(OperationsBase):
         atoms_result.set_cell(self.slab.get_cell())
 
         a2_copy = a2.copy()
-        variable_atoms = Atom()
+        variable_atoms = Atoms()
 
         #Check wether the constant part has been correctly created
         for x,y in zip(self.constant.numbers, atoms_result.numbers):
@@ -115,8 +106,7 @@ class CrossOperation(OperationsBase):
 
     def get_addition_by_random(self,a1):
 
-        """Adds a variable atom object to a structure. It gets its position from a second.
-        
+        """Adds a variable atom object to a structure. It gets its position from a second
 
         Does not check whether atoms are too close.
 
@@ -130,7 +120,9 @@ class CrossOperation(OperationsBase):
             if(x != y):
                 return None
         x,y,z = self.rng.rand(),self.rng.rand(),self.rng.rand()
+
         atom = Atoms(self.variable_number)
+        
         atom.set_cell(self.slab.get_cell())
         atom.set_scaled_positions(np.array([[x,y,z]]))
         atoms_result.append(atom)
