@@ -51,7 +51,7 @@ class AddOperation(OperationsBase):
                     child = None
 
             if child is None:
-                child = self.get_addition_by_random(a1_copy)
+                child = self.get_addition_random(a1_copy)
 
             if child is None:
                 continue
@@ -104,7 +104,7 @@ class AddOperation(OperationsBase):
         atoms_result.wrap()
         return atoms_result
 
-    def get_addition_by_random(self,a1):
+    def get_addition_random(self,a1):
 
         """Adds a variable atom object to a structure. It gets its position from a second
 

@@ -1,6 +1,6 @@
 
-from poplib import POP3_SSL
 import numpy as np
+
 from .OperationsBase import OperationsBase
 class RemoveOperation(OperationsBase):
     """
@@ -11,8 +11,8 @@ class RemoveOperation(OperationsBase):
                 rng=np.random):
         super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
 
-    def remove(self, a1):
-        """Crosses the two atoms objects and returns one"""
+    def remove(self, a1,index=None):
+        """If index is not provided removes a random atom of the variable type, If it is provided removes the atom at that index as long as its of variable type """
 
         if (len(a1)-len(self.slab)-len(self.constant) not in self.variable_range):
             raise ValueError('Wrong size of structure a1 to optimize')
@@ -40,7 +40,12 @@ class RemoveOperation(OperationsBase):
             pop_int = self.rng.randint(0,len(poppable_indices)-1)
             rand_atm = poppable_indices[pop_int]
             
-            child.pop(poppable_indices[rand_atm])
+            if(index is not None and index not in poppable_indices):
+                raise ValueError("Provided index does not belong to a removable atom")
+            elif(index is not None and index  in poppable_indices):
+                child.pop(poppable_indices[index])
+            else:
+                child.pop(poppable_indices[rand_atm])
 
             atoms  = self.slab.copy()
 

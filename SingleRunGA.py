@@ -4,6 +4,7 @@ from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
+from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 
 from ase import Atoms
 import numpy as np
@@ -49,6 +50,7 @@ candidateGenerator = SCG(slab,constant,variable_type,variable_range)
 crossing = CO(slab,constant,variable_type,variable_range,stc_change_chance = 0.5)
 adding = AD(slab,constant,variable_type,variable_range_test)
 removing = RM(slab,constant,variable_type,variable_range)
+permutating = PM(slab,constant,variable_type,variable_range)
 
 db = DBI('databaseGA.db')
 population = 25
@@ -133,10 +135,20 @@ print(len(atomslist[0]))
 cand = removing.remove(atomslist[0])
 print(len(cand))
 write('rm.traj',[atomslist[0],cand])
+
 atomslist = db.get_better_candidates(n=2)
 
 print(len(atomslist[0]))
 cand = adding.add(atomslist[0],atomslist[1])
 print(len(cand))
 write('add.traj',[atomslist[0],cand])
+
+atomslist = db.get_better_candidates(n=2)
+
+print(len(atomslist[0].numbers))
+print(atomslist[0].numbers)
+cand2 = permutating.permutate(atomslist[0])
+print(len(cand2.numbers))
+print(cand2.numbers)
+write('pm.traj',[atomslist[0],cand2])
 

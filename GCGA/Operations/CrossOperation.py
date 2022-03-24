@@ -10,7 +10,7 @@ class CrossOperation(OperationsBase):
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
     def __init__(self, slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.1,minfrac = None,):
+                rng=np.random,stc_change_chance = 0.1,minfrac = None):
         super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
