@@ -25,7 +25,8 @@ class DataBaseInterface:
                 atoms.info['key_value_pairs']['dbid']
         except KeyError:
             raise Exception("No dbid Parameter found in fetched atoms")
-
+    
+        
     def update_to_relaxed(self, dbid, atoms):
         try:
             atoms.info['key_value_pairs']['dbid']
@@ -42,8 +43,15 @@ class DataBaseInterface:
         except KeyError:
            raise Exception("Relaxed candidate does not have raw_score")
 
-        self.db.update(dbid,atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'])
-
+        self.db.update(dbid,atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],parent_penalty = 0)
+    def update_penalization(self,atoms):
+        try:
+            atoms.info['key_value_pairs']['dbid']
+        except:
+            raise Exception("No atoms object was not included in database before")
+        dbid = atoms.info['key_value_pairs']['dbid']
+        self.db.update(dbid,parent_penalty = atoms.info['key_value_pairs']['parent_penalty'] + 1)
+        
     "THIS NEEDS FIXING"
     def get_atoms_from_id(self,dbid):
         try:
@@ -125,6 +133,27 @@ class DataBaseInterface:
             
         if(wt['total'] > 0):
             atoms.sort(key=lambda x: (x.info['key_value_pairs']['raw_score'] * wt_strength *( 1.0-(wt[x.info['key_value_pairs']['var_stc']] / wt['total']))),reverse = True)
+        else:
+            atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
+        if(len(atoms)>n):
+            return list(atoms[:n])
+        else:
+            return list(atoms[:len(atoms)-1])
+
+    def get_better_candidates_weighted_penalized(self,n=1,wt_strength = 1.0,penalty_strength=1.0):
+
+        atoms = self.get_relaxed_candidates()
+        wt = {}
+        for a in atoms:
+            wt[a.info['key_value_pairs']['var_stc']] = 0
+        wt['total'] = 0
+        for a in atoms:
+            wt[a.info['key_value_pairs']['var_stc']] += 1
+            wt['total'] +=1
+            
+        if(wt['total'] > 0):
+            atoms.sort(key=lambda x: (x.info['key_value_pairs']['raw_score'] * wt_strength *( 1.0-(wt[x.info['key_value_pairs']['var_stc']] / wt['total'])) *
+             penalty_strength * -x.info['key_value_pairs']['parent_penalty']),reverse = True)
         else:
             atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
         if(len(atoms)>n):

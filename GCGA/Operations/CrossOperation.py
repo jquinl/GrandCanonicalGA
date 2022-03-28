@@ -89,6 +89,7 @@ class CrossOperation(OperationsBase):
                     continue
         
             atoms.info['stc']= self.get_var_stc(atoms)
+            print(a1.info['key_value_pairs']['parent_penalty'])
             return atoms
 
         return None

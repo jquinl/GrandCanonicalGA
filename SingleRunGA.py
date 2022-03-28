@@ -113,6 +113,8 @@ for i in range(steps):
         #Mate the particles
         res  = crossing.cross(atomslist[cand1],atomslist[cand2])
         if(res is not None):
+            db.update_penalization(atomslist[cand1])
+            db.update_penalization(atomslist[cand2])
             db.add_unrelaxed_candidate(res)
             
     
@@ -129,7 +131,7 @@ for i in range(steps):
 
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
         
-atomslist = db.get_better_candidates_weighted(n=2)
+atomslist = db.get_better_candidates_weighted_penalized(n=2)
 
 print(len(atomslist[0]))
 cand = removing.remove(atomslist[0])
