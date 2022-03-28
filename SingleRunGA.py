@@ -129,7 +129,7 @@ for i in range(steps):
 
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
         
-atomslist = db.get_better_candidates(n=2)
+atomslist = db.get_better_candidates_weighted(n=2)
 
 print(len(atomslist[0]))
 cand = removing.remove(atomslist[0])

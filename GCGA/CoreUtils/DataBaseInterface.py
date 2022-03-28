@@ -107,7 +107,30 @@ class DataBaseInterface:
         atoms = self.get_relaxed_candidates()
         atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
 
-        return list(atoms[:n])
+        if(len(atoms)>n):
+            return list(atoms[:n])
+        else:
+            return list(atoms[:len(atoms)-1])
+
+    def get_better_candidates_weighted(self,n=1,wt_strength = 1.0):
+
+        atoms = self.get_relaxed_candidates()
+        wt = {}
+        for a in atoms:
+            wt[a.info['key_value_pairs']['var_stc']] = 0
+        wt['total'] = 0
+        for a in atoms:
+            wt[a.info['key_value_pairs']['var_stc']] += 1
+            wt['total'] +=1
+            
+        if(wt['total'] > 0):
+            atoms.sort(key=lambda x: (x.info['key_value_pairs']['raw_score'] * wt_strength *( 1.0-(wt[x.info['key_value_pairs']['var_stc']] / wt['total']))),reverse = True)
+        else:
+            atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
+        if(len(atoms)>n):
+            return list(atoms[:n])
+        else:
+            return list(atoms[:len(atoms)-1])
 
     def __get_db_name(self,db_name):
         if Path(db_name ).is_file():
