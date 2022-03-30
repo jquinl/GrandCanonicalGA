@@ -59,11 +59,11 @@ class DataBaseInterface:
         except:
             raise Exception("No atoms with that dbid")
         try:
-                atoms.info['key_value_pairs']['dbid']
+            atoms.info['key_value_pairs']['dbid']
         except KeyError:
             raise Exception("No dbid Parameter found in fetched atoms")
         try:
-                atoms.info['key_value_pairs']['var_stc']
+            atoms.info['key_value_pairs']['var_stc']
         except KeyError:
             raise Exception("No var_stc Parameter found in fetched atoms")
         return atoms
@@ -97,15 +97,15 @@ class DataBaseInterface:
             try:
                 at.info['key_value_pairs']['dbid']
             except KeyError:
-                raise Exception("No dbid Parameter found in fetched atoms")
+                raise Exception("No dbid parameter found in fetched atoms")
             try:
                 at.info['key_value_pairs']['var_stc']
             except KeyError:
-                raise Exception("No var_stc Parameter found in fetched atoms")
+                raise Exception("No var_stc parameter found in fetched atoms")
             try:
                 at.info['key_value_pairs']['raw_score']
             except KeyError:
-                raise Exception("No var_stc Parameter found in fetched atoms")
+                raise Exception("No var_stc parameter found in fetched atoms")
 
             atoms.append(at)
         return list(atoms)

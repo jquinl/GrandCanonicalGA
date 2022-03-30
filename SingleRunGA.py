@@ -39,19 +39,40 @@ constant = Atoms('Pt1')
 #---------Generate variable part of the system-(Single atom types only)------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 #
-variable_type = Atoms('Au')
-#Considered number of variable type atoms n the search"
-variable_range = [1,2,3,4,5,7,8,9,10]
-variable_range_test = [1,2,3,4,5,7,8,9,10,11]
+variable_types = [Atoms('PtAu2'),Atoms('Pt5Au'),Atoms('CO')]
+for i in variable_types:
+    print(i.symbols.indices())
 
+
+
+#Considered number of variable type atoms n the search"
+variable_range = [[1,2],[2,3],[4,5,6]]
+lengths = 1
+lengths_array = []
+for i in range(len(variable_types)):
+   # print(len(variable_range[i]))
+    lengths_array.append(len(variable_range[i]))
+    lengths = lengths * len(variable_range[i])
+
+combiantion_matrix  = np.zeros((lengths,len(variable_range)),dtype = int)
+
+x=0
+while(x<lengths):
+    for i in range(len(variable_range)):
+      #  combiantion_matrix[x,i] = variable_range[i][j] 
+        advancement = int(np.prod(lengths_array[i+1:len(variable_range)]))
+        pos = int(x / advancement) % len(variable_range[i])
+        combiantion_matrix[x,i]=variable_range[i][pos]
+    x+=1
+print(combiantion_matrix)
 #---------------------------Define starting population--------------------------------"
 
-candidateGenerator = SCG(slab,constant,variable_type,variable_range)
-crossing = CO(slab,constant,variable_type,variable_range,stc_change_chance = 0.5)
-adding = AD(slab,constant,variable_type,variable_range_test)
-removing = RM(slab,constant,variable_type,variable_range)
-permutating = PM(slab,constant,variable_type,variable_range)
-
+candidateGenerator = SCG(slab,constant,variable_types,variable_range)
+"""crossing = CO(slab,constant,variable_types,variable_range,stc_change_chance = 0.5)
+adding = AD(slab,constant,variable_types,variable_range)
+removing = RM(slab,constant,variable_types,variable_range)
+permutating = PM(slab,constant,variable_types,variable_range)
+"""
 db = DBI('databaseGA.db')
 population = 25
 
@@ -62,18 +83,10 @@ starting_pop = candidateGenerator.get_starting_population(population_size=popula
 calc = EMT()
 
 #Get Reference energies##########
-constant.cell = slab.get_cell()
-variable_type.cell = slab.get_cell()
 
-constant.calc = calc
-dyn = BFGS(constant)
-dyn.run(steps=100, fmax=0.05)
-ref = constant.get_potential_energy()
+ref = 0.0
 
-variable_type.calc = calc
-dyn = BFGS(variable_type)
-dyn.run(steps=100, fmax=0.05)
-au_en = variable_type.get_potential_energy()
+au_en = 0.0
 
 #####################################
 
@@ -132,25 +145,4 @@ for i in range(steps):
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
         
 atomslist = db.get_better_candidates_weighted_penalized(n=2)
-
-print(len(atomslist[0]))
-cand = removing.remove(atomslist[0])
-print(len(cand))
-write('rm.traj',[atomslist[0],cand])
-
-atomslist = db.get_better_candidates(n=2)
-
-print(len(atomslist[0]))
-cand = adding.add(atomslist[0],atomslist[1])
-print(len(cand))
-write('add.traj',[atomslist[0],cand])
-
-atomslist = db.get_better_candidates(n=2)
-
-print(len(atomslist[0].numbers))
-print(atomslist[0].numbers)
-cand2 = permutating.permutate(atomslist[0])
-print(len(cand2.numbers))
-print(cand2.numbers)
-write('pm.traj',[atomslist[0],cand2])
 
