@@ -8,9 +8,9 @@ class AddOperation(OperationsBase):
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
-    def __init__(self, slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
+    def __init__(self, slab,constant,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random):
-        super().__init__(slab,constant,variable,variable_range,ratio_of_covalent_radii,rng)
+        super().__init__(slab,constant,variable_types,variable_range,ratio_of_covalent_radii,rng)
     
     def add(self, a1, a2):
         """Crosses the two atoms objects and returns one"""

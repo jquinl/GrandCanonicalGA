@@ -1,6 +1,9 @@
 
-from tkinter import Variable
-from typing import List
+
+from typing import List, Dict, Any
+import hashlib
+import json
+from ..CoreUtils.NumpyArrayEncoder import NumpyArrayEncoder
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
@@ -17,12 +20,14 @@ class OperationsBase:
         self.constant = self.__get_atoms_object(constant)
         self.variable_types = self.__get_variable_types(variable_types)
         self.variable_range = self.__get_range(variable_range)
+        self.combination_matrix = self.__set_combination_matrix()
         self.variable_dict = self.__set_variable_dict()
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.rng = rng
-      
+        """""""""""""""""""""""THIS NEEDS TO BE CHANGED"""
         uniques = self.constant.copy()
-        uniques.extend(self.variable)
+        for i in self.variable_types:
+            uniques.extend(i)
             
         unique_atom_types = get_all_atom_types(self.slab, uniques.numbers)
 
@@ -37,7 +42,7 @@ class OperationsBase:
         if(self.constant.symbols.indices() != atoms[len(self.slab):len(self.slab)+len(self.constant)].symbols.indices()):
             return False
         return True
-
+    """
     def get_var_stc(self,atoms) -> int:
         var_stc = len(atoms)-len(self.slab)-len(self.constant)
         if(var_stc >= 0 ):
@@ -47,20 +52,47 @@ class OperationsBase:
         else:
             raise Exception("Negative numer of variable atoms")
         return var_stc
-
+    """
     def get_var_id(self,atoms) -> int:
         if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain ordering of constant part")
         if(len(atoms) == len(self.slab)+ len(self.constant)):
             return self.variable_dict[0]
-        try:
-            var_id = self.variable_dict[atoms[len(self.slab)+ len(self.constant):].symbols.indices()]
-            return var_id
-        except:
-            raise Exception("var_id not found in dictionary")
-       
+        dict = self.atoms_to_hash(atoms[len(self.slab)+ len(self.constant):])
+        if(dict in  self.variable_dict):
+            return self.variable_dict[dict]
+        else:
+            return None
+
+    def atoms_to_hash(self,atoms):
+        if(not isinstance(atoms,Atoms)):
+            raise ValueError("Tried to hash object of type different than atoms Object")
+        hashed_dict = self.dict_hash(atoms.symbols.indices())
+        return hashed_dict
+
+    def dict_hash(self,dictionary: Dict[str, Any]) -> str:
+        
+        dhash = hashlib.sha1()
+        encoded = json.dumps(dictionary, cls=NumpyArrayEncoder,sort_keys=True).encode()
+        dhash.update(encoded)
+        return dhash.hexdigest()
 
     def __set_variable_dict(self):
         symbol_dictionary = {0:0}
+        if(len(self.variable_range) != len(self.variable_types)): raise ValueError("Variable type list length and variable range list length dont match")
+        try:
+            for x in range(len(self.combination_matrix)):
+                ats = Atoms()
+                for i in range(len(self.variable_range)):
+                    for j in range(self.combination_matrix[x,i]):
+                        ats.extend(self.variable_types[i].copy())
+                variable_id = x+1
+                symbol_dictionary[self.atoms_to_hash(ats)] = variable_id
+
+            return symbol_dictionary
+        except:
+            raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
+
+    def __set_combination_matrix(self):
         if(len(self.variable_range) != len(self.variable_types)): raise ValueError("Variable type list length and variable range list length dont match")
         try:
             lengths = 1
@@ -76,18 +108,9 @@ class OperationsBase:
                     advancement = int(np.prod(lengths_array[i+1:len(self.variable_range)]))
                     pos = int(x / advancement) % len(self.variable_range[i])
                     combiantion_matrix[x,i]=self.variable_range[i][pos]
-                
-            for x in range(lengths):
-                ats = Atoms()
-                for i in range(len(self.variable_range)):
-                    ats.extend(self.variable_types[i].copy() * combiantion_matrix[x,i])
-                variable_id = x+1
-                symbol_dictionary[ats.symbols.indices()] = variable_id
+            return combiantion_matrix
         except:
             raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
-        print(symbol_dictionary)
-
-
 
     def __get_range(self,variable_range) -> List[List[int]]:
         if isinstance(variable_range,List) and isinstance(variable_range[0],List):
@@ -122,3 +145,6 @@ class OperationsBase:
             return Atoms(numbers=atoms)
         else:
             raise ValueError('Cannot parse this element:', atoms)
+
+
+    

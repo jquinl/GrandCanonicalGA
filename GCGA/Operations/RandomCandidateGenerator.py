@@ -6,7 +6,8 @@ from ase.build import molecule
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 from ase.ga.startgenerator import StartGenerator
 
-class StartingCandidateGenerator:
+from .OperationsBase import OperationsBase
+class RandomCandidateGenerator(OperationsBase):
     """
     Class instantiated when passing:
 
@@ -31,68 +32,54 @@ class StartingCandidateGenerator:
         - default 0.8
     """
 
-    def __init__(self,slab,constant,variable,variable_range,ratio_of_covalent_radii=0.7,
-                    random_generation_box_size = 0.8):
-
-        self.slab = slab
-        self.constant = self.__get_atoms_object(constant)
-        self.variable = self.__get_atoms_object(variable)
-        self.variable_range = self.__get_range(variable_range)
-        self.ratio_of_covalent_radii = ratio_of_covalent_radii
+    def __init__(self,slab,constant,variable_types,variable_range,ratio_of_covalent_radii=0.7,
+                    random_generation_box_size = 0.8,rng=np.random):
+        super().__init__(slab,constant,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
 
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
-        if(number not in self.variable_range):
-            raise Exception("Provided amount of variable systems not present in range")
+        if(number > len(self.combination_matrix)):
+            raise Exception("Provided number higher than possible combinations")
+
         atoms = self.constant.copy()
         var = Atoms()
-        for j in range(number):
-            var.extend(self.variable)
-        if(len(var) != 0):
-            atoms.extend(var)
+        new_atoms = self.combination_matrix[number]
+        print(new_atoms)
+        print(len(self.combination_matrix))
+        for i in range(len(new_atoms)):
+            for j in range(new_atoms[i]):
+                print(new_atoms[i])
+                var.extend(self.variable_types[i])
+        
+        atoms.extend(var)
         unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
-
         blmin = closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
-
-        atoms_numbers  = self.constant.numbers
-
-        for i in range(number):
-            atoms_numbers = np.concatenate((atoms_numbers,self.variable.numbers),axis=None)
         
+        atoms_numbers  = atoms.numbers
         sg = StartGenerator(self.slab, atoms_numbers, blmin,
                     box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]])
-        atoms = sg.get_new_candidate()
-        atoms.info['stc']= self.get_var_stc(atoms)
+        return_atoms = sg.get_new_candidate()
+        return_atoms.info['stc']= self.get_var_id(return_atoms)
+        return return_atoms
 
-        return atoms
-    def get_var_stc(self,atoms) -> int:
-        var_stc = len(atoms)-len(self.slab)-len(self.constant)
-        if(var_stc >= 0 ):
-            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
-                if(i.symbol != self.variable[0].symbol):
-                    raise Exception("Variable type of atoms does not match stored type")
-        else:
-            raise Exception("Negative numer of variable atoms")
-        return var_stc
     def get_random_candidate(self,maxiter=None) -> Atoms:
         "Returns a random structure from all the possible stoichiometries"
-        return  self.get_candidate_by_number(number = np.random.choice(self.variable_range,size=1)[0],maxiter=maxiter)
+        return  self.get_candidate_by_number(number = np.randnint(len(self.combination_matrix),maxiter=maxiter))
 
     def get_starting_population(self,population_size=20,maxiter=None):
         starting_population = []
-        starting_population_numbers = []
-        single_population_size = int(population_size/len(self.variable_range))
-        for i in self.variable_range:
+        single_population_size = int(population_size/len(self.combination_matrix))
+        for i in range(len(self.combination_matrix)):
             for j in range(single_population_size):
                 atoms = self.get_candidate_by_number(i,maxiter=maxiter)
                 #atoms.info['stc'] = i
                 starting_population.append(atoms)
         return starting_population
+
     def get_starting_population_single(self,variable_number,population_size=20,maxiter=None,):
         starting_population = []
-        starting_population_numbers = []
-        if(variable_number in self.variable_range):
+        if(variable_number < len(self.combination_matrix)):
             for j in range(population_size):
                 atoms = self.get_candidate_by_number(variable_number,maxiter=maxiter)
                 starting_population.append(atoms)
@@ -100,12 +87,6 @@ class StartingCandidateGenerator:
         else:
             raise Exception("Provided variable number not in range")
     #"Private Methods do not touch"
-    def __get_range(self,variable_range) -> List[int]:
-        if isinstance(variable_range,List) and isinstance(variable_range[0],int):
-            return variable_range
-        else:
-            raise Exception("variable_ range is not al ist of integers")
-
     def __get_cell_params(self,slab,random_generation_box_size):
         "Gets cell parameters from inputed slab"
         if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
@@ -125,20 +106,6 @@ class StartingCandidateGenerator:
             v3 = cell[2, :]
             v3[2] = 3.
         return p0,v1,v2,v3
-
-    def __get_atoms_object(self,atoms) -> Atoms:
-        "Gets an atoms object based on user input"
-        if isinstance(atoms, Atoms):
-            return atoms
-        elif isinstance(atoms, str):
-            return Atoms(atoms)
-        elif isinstance(atoms,List):
-            for i in atoms:
-                if(i not in atomic_numbers.values()):
-                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
-            return Atoms(numbers=atoms)
-        else:
-            raise ValueError('Cannot parse this element:', atoms)
     
     
         

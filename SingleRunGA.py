@@ -1,7 +1,9 @@
 #Import these for the GA code to run
-from GCGA.CoreUtils.StartingCandidateGenerator import StartingCandidateGenerator as SCG
+from email.mime import base
+from multiprocessing.connection import _ConnectionBase
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Operations.CrossOperation import CrossOperation as CO
+from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
@@ -27,7 +29,7 @@ def fitness_function(atoms,env,reference = 0.0,au_energy = 0.0)-> float:
 
 #---------------------------Generate static part of the system------------------------------"
 a = 12.0
-slab = Atoms(cell=[a,a,a],
+slab = Atoms('Pt',cell=[a,a,a],
              pbc=True)
 
 #If slab atoms arent fixed they will be generated  for all structures, but will be relaxed!"
@@ -39,42 +41,21 @@ constant = Atoms('Pt1')
 #---------Generate variable part of the system-(Single atom types only)------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 #
-variable_types = [Atoms('PtAu2'),Atoms('Pt5Au'),Atoms('CO')]
+variable_types = [Atoms('Pt'),Atoms('Au'),Atoms('C')]
+variable_range = [[1,2],[0,1,2],[1,2]]
 for i in variable_types:
     print(i.symbols.indices())
 
-
-
-#Considered number of variable type atoms n the search"
-variable_range = [[1,2],[2,3],[4,5,6]]
-lengths = 1
-lengths_array = []
-for i in range(len(variable_types)):
-   # print(len(variable_range[i]))
-    lengths_array.append(len(variable_range[i]))
-    lengths = lengths * len(variable_range[i])
-
-combiantion_matrix  = np.zeros((lengths,len(variable_range)),dtype = int)
-
-x=0
-while(x<lengths):
-    for i in range(len(variable_range)):
-      #  combiantion_matrix[x,i] = variable_range[i][j] 
-        advancement = int(np.prod(lengths_array[i+1:len(variable_range)]))
-        pos = int(x / advancement) % len(variable_range[i])
-        combiantion_matrix[x,i]=variable_range[i][pos]
-    x+=1
-print(combiantion_matrix)
 #---------------------------Define starting population--------------------------------"
+db = DBI('databaseGA.db')
 
-candidateGenerator = SCG(slab,constant,variable_types,variable_range)
-"""crossing = CO(slab,constant,variable_types,variable_range,stc_change_chance = 0.5)
-adding = AD(slab,constant,variable_types,variable_range)
+candidateGenerator = RCG(slab,constant,variable_types,variable_range)
+crossing = CO(slab,constant,variable_types,variable_range,minfrac = 0.2)
+"""adding = AD(slab,constant,variable_types,variable_range)
 removing = RM(slab,constant,variable_types,variable_range)
 permutating = PM(slab,constant,variable_types,variable_range)
 """
-db = DBI('databaseGA.db')
-population = 25
+population = 12
 
 starting_pop = candidateGenerator.get_starting_population(population_size=population)
 
@@ -89,8 +70,6 @@ ref = 0.0
 au_en = 0.0
 
 #####################################
-
-
 
 for i in starting_pop:
     db.add_unrelaxed_candidate(i )
@@ -114,6 +93,7 @@ while db.get_number_of_unrelaxed_candidates() > 0:
 #Overall fitness value
 steps = 10
 sub_steps = 20
+a =False
 for i in range(steps):
     for j in range(sub_steps):
         atomslist = db.get_better_candidates(n=10)
@@ -129,6 +109,9 @@ for i in range(steps):
             db.update_penalization(atomslist[cand1])
             db.update_penalization(atomslist[cand2])
             db.add_unrelaxed_candidate(res)
+            if(not a):
+                write('cross.traj',[atomslist[cand1],atomslist[cand2],res])
+                a = True
             
     
     while db.get_number_of_unrelaxed_candidates() > 0:
@@ -143,6 +126,7 @@ for i in range(steps):
         atoms.info['key_value_pairs']['raw_score'] = -fitness_function(atoms,env,reference = ref, au_energy = au_en)
 
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
+
         
 atomslist = db.get_better_candidates_weighted_penalized(n=2)
 
