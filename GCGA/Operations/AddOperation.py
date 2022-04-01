@@ -18,21 +18,13 @@ class AddOperation(OperationsBase):
         allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 
         allowed_stc2 = a2.info['key_value_pairs']['var_stc']
 
-        if (len(a1)-len(self.slab)-len(self.constant) not in self.variable_range):
-            raise ValueError('Wrong size of structure a1 to optimize')
-        if (len(a2)-len(self.slab)-len(self.constant) not in self.variable_range):
-            raise ValueError('Wrong size of structure a2 to optimize')
-
         #check that a1 and a2 share a cell with initialized slef.slab
         if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
             raise ValueError('Different cell sizes found for slab and inputed structures')
 
-        if((allowed_stc1 + 1) not in self.variable_range):
-            return None
-
         # Only consider the atoms to optimize
         a1 = a1[len(self.slab) :len(a1)]
-        a2 = a2[len(self.slab) :len(a2)]
+        a2 = a2[len(self.slab)+len(self.constant) :len(a2)]
         
         invalid = True
         counter = 0
@@ -45,8 +37,8 @@ class AddOperation(OperationsBase):
             counter += 1
         
             rand_displacement = self.rng.randint(0,allowed_stc2)
-            for i in range(allowed_stc2):
-                child = self.get_addition_by_pairing(a1_copy, a2_copy,place = (i+rand_displacement)%allowed_stc2)
+            for i in range(len(a2_copy)):
+                child = self.get_addition_by_pairing(a1_copy, a2_copy,place = (i+rand_displacement)%len(a2_copy))
                 if atoms_too_close(child, self.blmin):
                     child = None
 
@@ -68,8 +60,10 @@ class AddOperation(OperationsBase):
             # Passed all the tests
             atoms.wrap()
 
-        
-            atoms.info['stc']= self.get_var_stc(atoms)
+            if(self.get_var_id(atoms) is None):
+                continue
+            atoms.info['stc']= self.get_var_id(atoms)
+            
             return atoms
         return None
 
@@ -86,21 +80,16 @@ class AddOperation(OperationsBase):
         atoms_result.set_cell(self.slab.get_cell())
 
         a2_copy = a2.copy()
-        variable_atoms = Atoms()
 
-        #Check wether the constant part has been correctly created
-        for x,y in zip(self.constant.numbers, atoms_result.numbers):
-            if(x != y):
-                return None
-
-        for atom in a2_copy:
-            if(atom.number == self.variable_number):
-                variable_atoms.append(atom)
-                atom.number = 200
-        
-        if(len(variable_atoms) == 0):
+        if(place > len(a2_copy)):
             return None
-        atoms_result.extend(variable_atoms[place])
+        #Check wether the constant part has been correctly created
+        if(self.constant.symbols.indices() != atoms_result.self.symbols.indices()):
+            return None
+
+      
+        atoms_result.append(a2_copy[place])
+        
         atoms_result.wrap()
         return atoms_result
 
@@ -116,15 +105,16 @@ class AddOperation(OperationsBase):
         atoms_result.set_cell(self.slab.get_cell())
 
         #Check wether the constant part has been correctly created
-        for x,y in zip(self.constant.numbers, atoms_result.numbers):
-            if(x != y):
-                return None
+        if(self.constant.symbols.indices() != atoms_result.self.symbols.indices()):
+            return None
+
         x,y,z = self.rng.rand(),self.rng.rand(),self.rng.rand()
 
-        atom = Atoms(self.variable_number)
+        at = self.rng.randint(len(self.variable_types)-1)
+        atom = self.variable_types[at].copy()
         
         atom.set_cell(self.slab.get_cell())
         atom.set_scaled_positions(np.array([[x,y,z]]))
-        atoms_result.append(atom)
+        atoms_result.extend(atom)
 
         return atoms_result

@@ -24,11 +24,7 @@ class PermutationOperation(OperationsBase):
 
         allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 
         chg_chance = self.delete_chance
-        if(allowed_stc1 -1 not in self.variable_range):
-            chg_chance = 0.0
-        if (len(a1)-len(self.slab)-len(self.constant) not in self.variable_range):
-            raise ValueError('Wrong size of structure a1 to optimize')
-
+        
         #check that a1 and a2 share a cell with initialized slef.slab
         if(self.slab.get_cell().all() != a1.get_cell().all()):
             raise ValueError('Different cell sizes found for slab and inputed structures')
@@ -37,15 +33,17 @@ class PermutationOperation(OperationsBase):
         a1 = a1[len(self.slab) :len(a1)]
 
         all_indices = np.array([ a for a in np.arange(len(a1))])
-        variable_indices = np.array([ a for a in np.arange(len(a1)) if a1.numbers[a] == self.variable_number])
+        variable_indices = np.array([ a for a in np.arange(len(a1)) if a > len(self.constant)])
         
 
         unique_types =[]
         for a in a1.numbers:
             if(a not in unique_types):
                 unique_types.append(a)
+        
         if(len(unique_types) < 2):
             raise Exception("Provided atoms object only contains one type of atom, unable to permute")
+
         invalid = True
         counter = 0
         maxcount = 1000
@@ -86,12 +84,11 @@ class PermutationOperation(OperationsBase):
             #   continue
             if(not self.mantains_ordering(atoms)):
                 continue
-            var_stc = self.get_var_stc(atoms)
-            if(var_stc not in self.variable_range):
+            if(self.get_var_id(atoms) is None):
                 continue
             # Passed all the tests
         
-            atoms.info['stc']= self.get_var_stc(atoms)
+            atoms.info['stc']= self.get_var_id(atoms)
             return atoms
 
         return None
