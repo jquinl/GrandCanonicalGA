@@ -24,15 +24,8 @@ class OperationsBase:
         self.variable_dict = self.__set_variable_dict()
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.rng = rng
-        """""""""""""""""""""""THIS NEEDS TO BE CHANGED"""
-        uniques = self.constant.copy()
-        for i in self.variable_types:
-            uniques.extend(i)
-            
-        unique_atom_types = get_all_atom_types(self.slab, uniques.numbers)
 
-        self.blmin = closest_distances_generator(atom_numbers=unique_atom_types,
-                                    ratio_of_covalent_radii=self.ratio_of_covalent_radii)
+        self.blmin = self.__set_blmin(slab, constant, variable_types)
 
     def mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)+ len(self.constant)):
@@ -42,17 +35,7 @@ class OperationsBase:
         if(self.constant.symbols.indices() != atoms[len(self.slab):len(self.slab)+len(self.constant)].symbols.indices()):
             return False
         return True
-    """
-    def get_var_stc(self,atoms) -> int:
-        var_stc = len(atoms)-len(self.slab)-len(self.constant)
-        if(var_stc >= 0 ):
-            for i in atoms[(len(self.slab)+len(self.constant)):len(atoms)]:
-                if(i.symbol != self.variable[0].symbol):
-                    raise Exception("Variable type of atoms does not match stored type")
-        else:
-            raise Exception("Negative numer of variable atoms")
-        return var_stc
-    """
+
     def get_var_id(self,atoms) -> int:
         if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain ordering of constant part")
         if(len(atoms) == len(self.slab)+ len(self.constant)):
@@ -145,6 +128,16 @@ class OperationsBase:
             return Atoms(numbers=atoms)
         else:
             raise ValueError('Cannot parse this element:', atoms)
+
+    def __set_blmin(self,slab, constant, variable_types):
+        uniques = constant.copy()
+        for i in variable_types:
+            uniques.extend(i)
+            
+        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
+
+        return closest_distances_generator(atom_numbers=unique_atom_types,
+                                    ratio_of_covalent_radii=self.ratio_of_covalent_radii)
 
 
     

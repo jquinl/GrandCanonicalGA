@@ -44,8 +44,7 @@ class RandomCandidateGenerator(OperationsBase):
         atoms = self.constant.copy()
         var = Atoms()
         new_atoms = self.combination_matrix[number]
-        print(new_atoms)
-        print(len(self.combination_matrix))
+
         for i in range(len(new_atoms)):
             for j in range(new_atoms[i]):
                 print(new_atoms[i])

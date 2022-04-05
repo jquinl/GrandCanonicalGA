@@ -1,5 +1,6 @@
 #Import these for the GA code to run
 from email.mime import base
+from math import perm
 from multiprocessing.connection import _ConnectionBase
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Operations.CrossOperation import CrossOperation as CO
@@ -41,8 +42,8 @@ constant = Atoms('Pt1')
 #---------Generate variable part of the system-(Single atom types only)------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 #
-variable_types = [Atoms('Pt'),Atoms('Au'),Atoms('C')]
-variable_range = [[1,2],[0,1,2],[1,2]]
+variable_types = [Atoms('Pt'),Atoms('Au')]
+variable_range = [[1],[0,1,2,3,4,5,6,7,8,9]]
 for i in variable_types:
     print(i.symbols.indices())
 
@@ -51,10 +52,10 @@ db = DBI('databaseGA.db')
 
 candidateGenerator = RCG(slab,constant,variable_types,variable_range)
 crossing = CO(slab,constant,variable_types,variable_range,minfrac = 0.2)
-"""adding = AD(slab,constant,variable_types,variable_range)
+adding = AD(slab,constant,variable_types,variable_range)
 removing = RM(slab,constant,variable_types,variable_range)
 permutating = PM(slab,constant,variable_types,variable_range)
-"""
+
 population = 12
 
 starting_pop = candidateGenerator.get_starting_population(population_size=population)
@@ -91,27 +92,34 @@ while db.get_number_of_unrelaxed_candidates() > 0:
 
 #--------------------------------------Find better stoich to srtart eval----------------------------
 #Overall fitness value
-steps = 10
-sub_steps = 20
-a =False
+steps = 100
+sub_steps = 10
 for i in range(steps):
     for j in range(sub_steps):
-        atomslist = db.get_better_candidates(n=10)
+        atomslist = db.get_better_candidates(n=11)
+        ranges = len(atomslist)
         #Choose two of the most stable structures to pair
-        cand1 = np.random.randint(0,10)
-        cand2 = np.random.randint(0,10)
-        while cand1 == cand2:
-            cand2 = np.random.randint(0,10)
-            
+        cand1 = np.random.randint(0,ranges-1)
+        cand2 = np.random.randint(0,ranges -1)
+        if(ranges >1):
+            while cand1 == cand2:
+                cand2 = np.random.randint(0,10)
         #Mate the particles
-        res  = crossing.cross(atomslist[cand1],atomslist[cand2])
-        if(res is not None):
-            db.update_penalization(atomslist[cand1])
-            db.update_penalization(atomslist[cand2])
-            db.add_unrelaxed_candidate(res)
-            if(not a):
-                write('cross.traj',[atomslist[cand1],atomslist[cand2],res])
-                a = True
+            res  = crossing.cross(atomslist[cand1],atomslist[cand2])
+            if(res is not None):
+                db.update_penalization(atomslist[cand1])
+                db.update_penalization(atomslist[cand2])
+                db.add_unrelaxed_candidate(res)
+            else:
+                print("DIDNTWORK")
+                a = np.random.randint(0,2)
+                if(a==0):
+                    adding.add(atomslist[cand1],atomslist[cand2])
+                if(a == 1):
+                    removing.remove(atomslist[cand1])
+                if(a == 2):
+                    permutating.permutate(atomslist[cand1])
+
             
     
     while db.get_number_of_unrelaxed_candidates() > 0:
@@ -128,5 +136,5 @@ for i in range(steps):
         db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
 
         
-atomslist = db.get_better_candidates_weighted_penalized(n=2)
-
+atomslist = db.get_better_candidates(n=100)
+write('aaa.traj',atomslist)
