@@ -66,9 +66,10 @@ calc = EMT()
 
 #Get Reference energies##########
 
-ref = 0.0
 
-au_en = 0.0
+ref=read('pt.traj@:')[0].get_potential_energy()    
+
+au_en =read('gold_bulk.traj').get_potential_energy() / 500.0
 
 #####################################
 
