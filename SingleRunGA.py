@@ -29,34 +29,32 @@ def fitness_function(atoms,env,reference = 0.0,au_energy = 0.0)-> float:
     return fre
 
 #---------------------------Generate static part of the system------------------------------"
-a = 12.0
-slab = Atoms('Pt',cell=[a,a,a],
+a = 24.0
+slab = Atoms(cell=[a,a,a],
              pbc=True)
 
 #If slab atoms arent fixed they will be generated  for all structures, but will be relaxed!"
 
 #---------------------------Generate constant part of the system------------------------------"
 #Part of the system that can be relaxed but that does not vary in number over the duration of the search"
-constant = Atoms('Pt1')
+
 
 #---------Generate variable part of the system-(Single atom types only)------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 #
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[0,1,2,3,4,5,6,7,8,9]]
-for i in variable_types:
-    print(i.symbols.indices())
+variable_range = [[1],[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20]]
 
 #---------------------------Define starting population--------------------------------"
 db = DBI('databaseGA.db')
 
-candidateGenerator = RCG(slab,constant,variable_types,variable_range)
-crossing = CO(slab,constant,variable_types,variable_range,minfrac = 0.2)
-adding = AD(slab,constant,variable_types,variable_range)
-removing = RM(slab,constant,variable_types,variable_range)
-permutating = PM(slab,constant,variable_types,variable_range)
+candidateGenerator = RCG(slab,variable_types,variable_range)
+crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
+adding = AD(slab,variable_types,variable_range)
+removing = RM(slab,variable_types,variable_range)
+permutating = PM(slab,variable_types,variable_range)
 
-population = 12
+population = 40
 
 starting_pop = candidateGenerator.get_starting_population(population_size=population)
 
@@ -97,14 +95,14 @@ steps = 100
 sub_steps = 10
 for i in range(steps):
     for j in range(sub_steps):
-        atomslist = db.get_better_candidates(n=11)
+        atomslist = db.get_better_candidates_weighted_penalized(n=11)
         ranges = len(atomslist)
         #Choose two of the most stable structures to pair
         cand1 = np.random.randint(0,ranges-1)
         cand2 = np.random.randint(0,ranges -1)
         if(ranges >1):
             while cand1 == cand2:
-                cand2 = np.random.randint(0,10)
+                cand2 = np.random.randint(0,ranges -1)
         #Mate the particles
             res  = crossing.cross(atomslist[cand1],atomslist[cand2])
             if(res is not None):
@@ -112,16 +110,26 @@ for i in range(steps):
                 db.update_penalization(atomslist[cand2])
                 db.add_unrelaxed_candidate(res)
             else:
-                print("DIDNTWORK")
-                a = np.random.randint(0,2)
-                if(a==0):
-                    adding.add(atomslist[cand1],atomslist[cand2])
-                if(a == 1):
-                    removing.remove(atomslist[cand1])
-                if(a == 2):
-                    permutating.permutate(atomslist[cand1])
-
-            
+                tries = 0
+                while tries < 10:
+                    tries += 1
+                    print("DIDNTWORK")
+                    a = np.random.randint(0,2)
+                    if(a==0):
+                        at =  adding.add(atomslist[cand1],atomslist[cand2])
+                        if(at is not None):
+                            tries = 10
+                            db.add_unrelaxed_candidate(at)
+                    if(a == 1):
+                        at = removing.remove(atomslist[cand1])
+                        if(at is not None):
+                            tries = 10
+                            db.add_unrelaxed_candidate(at)
+                    if(a == 2):
+                        at = permutating.permutate(atomslist[cand1])
+                        if(at is not None):
+                            tries = 10
+                            db.add_unrelaxed_candidate(at)
     
     while db.get_number_of_unrelaxed_candidates() > 0:
 

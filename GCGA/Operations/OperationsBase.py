@@ -14,10 +14,9 @@ class OperationsBase:
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
-    def __init__(self, slab,constant,variable_types,variable_range,ratio_of_covalent_radii=0.7,
+    def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random):
         self.slab = slab
-        self.constant = self.__get_atoms_object(constant)
         self.variable_types = self.__get_variable_types(variable_types)
         self.variable_range = self.__get_range(variable_range)
         self.combination_matrix = self.__set_combination_matrix()
@@ -25,22 +24,21 @@ class OperationsBase:
         self.ratio_of_covalent_radii = ratio_of_covalent_radii
         self.rng = rng
 
-        self.blmin = self.__set_blmin(slab, constant, variable_types)
+        self.blmin = self.__set_blmin(slab, variable_types)
 
     def mantains_ordering(self,atoms):
-        if(len(atoms) < len(self.slab)+ len(self.constant)):
+        if(len(atoms) < len(self.slab)):
             return False
         if(self.slab.symbols.indices() != atoms[:len(self.slab)].symbols.indices()):
             return False
-        if(self.constant.symbols.indices() != atoms[len(self.slab):len(self.slab)+len(self.constant)].symbols.indices()):
-            return False
+
         return True
 
     def get_var_id(self,atoms) -> int:
-        if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain ordering of constant part")
-        if(len(atoms) == len(self.slab)+ len(self.constant)):
+        if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain atomic ordering")
+        if(len(atoms) == len(self.slab)):
             return self.variable_dict[0]
-        dict = self.atoms_to_hash(atoms[len(self.slab)+ len(self.constant):])
+        dict = self.atoms_to_hash(atoms[len(self.slab):])
         if(dict in  self.variable_dict):
             return self.variable_dict[dict]
         else:
@@ -103,7 +101,7 @@ class OperationsBase:
                         raise Exception("variable_ range is not al List of List of integers")
             return variable_range
         else:
-            raise Exception("variable_ range is not al List of List of integers")
+            raise Exception("variable_range is not al List of List of integers")
 
     def __get_variable_types(self,types) -> List[Atoms]:
         "Gets an atoms object based on user input"
@@ -129,8 +127,8 @@ class OperationsBase:
         else:
             raise ValueError('Cannot parse this element:', atoms)
 
-    def __set_blmin(self,slab, constant, variable_types):
-        uniques = constant.copy()
+    def __set_blmin(self,slab, variable_types):
+        uniques = Atoms()
         for i in variable_types:
             uniques.extend(i)
             

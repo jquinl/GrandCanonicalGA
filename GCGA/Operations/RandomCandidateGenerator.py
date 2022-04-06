@@ -32,25 +32,23 @@ class RandomCandidateGenerator(OperationsBase):
         - default 0.8
     """
 
-    def __init__(self,slab,constant,variable_types,variable_range,ratio_of_covalent_radii=0.7,
+    def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                     random_generation_box_size = 0.8,rng=np.random):
-        super().__init__(slab,constant,variable_types,variable_range,ratio_of_covalent_radii,rng)
+        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
 
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
         if(number > len(self.combination_matrix)):
             raise Exception("Provided number higher than possible combinations")
 
-        atoms = self.constant.copy()
-        var = Atoms()
+        atoms = Atoms()
         new_atoms = self.combination_matrix[number]
 
         for i in range(len(new_atoms)):
             for j in range(new_atoms[i]):
-                print(new_atoms[i])
-                var.extend(self.variable_types[i])
-        
-        atoms.extend(var)
+                atoms.extend(self.variable_types[i])
+
+        #Consider using self.blmin here see if it works
         unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
         blmin = closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
@@ -59,8 +57,13 @@ class RandomCandidateGenerator(OperationsBase):
         sg = StartGenerator(self.slab, atoms_numbers, blmin,
                     box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]])
         return_atoms = sg.get_new_candidate()
-        return_atoms.info['stc']= self.get_var_id(return_atoms)
-        return return_atoms
+        var_id = self.get_var_id(return_atoms)
+        if(var_id is not None):
+            return_atoms.info['stc']= var_id
+            print(var_id)
+            return return_atoms
+        else:
+            raise Exception("Provided atomic combination is not present in combination matrix")
 
     def get_random_candidate(self,maxiter=None) -> Atoms:
         "Returns a random structure from all the possible stoichiometries"
