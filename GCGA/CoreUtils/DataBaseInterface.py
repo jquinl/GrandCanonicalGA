@@ -27,7 +27,7 @@ class DataBaseInterface:
             raise Exception("No dbid Parameter found in fetched atoms")
     
         
-    def update_to_relaxed(self, dbid, atoms):
+    def update_to_relaxed(self, atoms):
         try:
             atoms.info['key_value_pairs']['dbid']
         except:
@@ -36,14 +36,12 @@ class DataBaseInterface:
             atoms.info['key_value_pairs']['var_stc']
         except KeyError:
             raise Exception("No var_stc Parameter found in fetched atoms")
-        if(dbid != atoms.info['key_value_pairs']['dbid']):
-            raise Exception("Atoms object dbid and database dbid do not coincide")
         try:
             atoms.info['key_value_pairs']['raw_score']
         except KeyError:
            raise Exception("Relaxed candidate does not have raw_score")
 
-        self.db.update(dbid,atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],parent_penalty = 0)
+        self.db.update(atoms.info['key_value_pairs']['dbid'],atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],parent_penalty = 0)
     def update_penalization(self,atoms):
         try:
             atoms.info['key_value_pairs']['dbid']

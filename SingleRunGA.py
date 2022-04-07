@@ -1,13 +1,11 @@
 #Import these for the GA code to run
-from email.mime import base
-from math import perm
-from multiprocessing.connection import _ConnectionBase
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
+from GCGA.Operations.RattleOperation import RattleOperation as RT
 
 from ase import Atoms
 import numpy as np
@@ -43,7 +41,7 @@ slab = Atoms(cell=[a,a,a],
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 #
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20]]
+variable_range = [[1],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20]]
 
 #---------------------------Define starting population--------------------------------"
 db = DBI('databaseGA.db')
@@ -53,6 +51,7 @@ crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
 adding = AD(slab,variable_types,variable_range)
 removing = RM(slab,variable_types,variable_range)
 permutating = PM(slab,variable_types,variable_range)
+rattling = RT(slab,variable_types,variable_range)
 
 population = 40
 
@@ -75,7 +74,7 @@ for i in starting_pop:
     db.add_unrelaxed_candidate(i )
 
 #---------------------------------Relax initial structures-----------------------------------"
-env = -0.5 #Environment chem pot 
+env = 2.0 #Environment chem pot 
 while db.get_number_of_unrelaxed_candidates() > 0:
 
     atoms = db.get_first_unrelaxed()
@@ -87,19 +86,19 @@ while db.get_number_of_unrelaxed_candidates() > 0:
     
     atoms.info['key_value_pairs']['raw_score'] = -fitness_function(atoms,env,reference = ref, au_energy = au_en)
    
-    db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
+    db.update_to_relaxed(atoms)
 
 #--------------------------------------Find better stoich to srtart eval----------------------------
 #Overall fitness value
-steps = 100
+steps = 10
 sub_steps = 10
 for i in range(steps):
     for j in range(sub_steps):
-        atomslist = db.get_better_candidates_weighted_penalized(n=11)
+        atomslist = db.get_better_candidates(n=11)
         ranges = len(atomslist)
         #Choose two of the most stable structures to pair
-        cand1 = np.random.randint(0,ranges-1)
-        cand2 = np.random.randint(0,ranges -1)
+        cand1 = np.random.randint(0,ranges - 1)
+        cand2 = np.random.randint(0,ranges - 1)
         if(ranges >1):
             while cand1 == cand2:
                 cand2 = np.random.randint(0,ranges -1)
@@ -111,24 +110,29 @@ for i in range(steps):
                 db.add_unrelaxed_candidate(res)
             else:
                 tries = 0
+                print("DIDNTWORK")
                 while tries < 10:
                     tries += 1
-                    print("DIDNTWORK")
+                    
                     a = np.random.randint(0,2)
                     if(a==0):
                         at =  adding.add(atomslist[cand1],atomslist[cand2])
                         if(at is not None):
                             tries = 10
+                            db.update_penalization(atomslist[cand1])
                             db.add_unrelaxed_candidate(at)
                     if(a == 1):
                         at = removing.remove(atomslist[cand1])
+
                         if(at is not None):
                             tries = 10
+                            db.update_penalization(atomslist[cand1])
                             db.add_unrelaxed_candidate(at)
                     if(a == 2):
                         at = permutating.permutate(atomslist[cand1])
                         if(at is not None):
                             tries = 10
+                            db.update_penalization(atomslist[cand1])
                             db.add_unrelaxed_candidate(at)
     
     while db.get_number_of_unrelaxed_candidates() > 0:
@@ -142,8 +146,14 @@ for i in range(steps):
 
         atoms.info['key_value_pairs']['raw_score'] = -fitness_function(atoms,env,reference = ref, au_energy = au_en)
 
-        db.update_to_relaxed(atoms.info['key_value_pairs']['dbid'],atoms)
+        db.update_to_relaxed(atoms)
 
         
 atomslist = db.get_better_candidates(n=100)
 write('aaa.traj',atomslist)
+
+chidl = rattling.rattle(atomslist[0])
+if(chidl is not None):
+    write('rtl.traj',[atomslist[0],chidl])
+
+

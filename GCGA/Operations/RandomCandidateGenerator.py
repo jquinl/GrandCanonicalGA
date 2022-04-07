@@ -47,8 +47,19 @@ class RandomCandidateGenerator(OperationsBase):
         for i in range(len(new_atoms)):
             for j in range(new_atoms[i]):
                 atoms.extend(self.variable_types[i])
-
         #Consider using self.blmin here see if it works
+
+        if(len(atoms) == 0):
+            raise Exception("Empty atoms being generated at random, revise stoichiometies")
+        if(len(atoms) == 1):
+            return_atoms = atoms.copy()
+            return_atoms.set_cell(self.slab.get_cell())
+            var_id = self.get_var_id(return_atoms)
+            if(var_id is not None):
+                return_atoms.info['stc']= var_id
+                return return_atoms
+            else:
+                raise Exception("Provided atomic combination is not present in combination matrix")
         unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
         blmin = closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
@@ -60,7 +71,6 @@ class RandomCandidateGenerator(OperationsBase):
         var_id = self.get_var_id(return_atoms)
         if(var_id is not None):
             return_atoms.info['stc']= var_id
-            print(var_id)
             return return_atoms
         else:
             raise Exception("Provided atomic combination is not present in combination matrix")
@@ -75,7 +85,6 @@ class RandomCandidateGenerator(OperationsBase):
         for i in range(len(self.combination_matrix)):
             for j in range(single_population_size):
                 atoms = self.get_candidate_by_number(i,maxiter=maxiter)
-                #atoms.info['stc'] = i
                 starting_population.append(atoms)
         return starting_population
 
