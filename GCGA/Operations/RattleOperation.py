@@ -14,11 +14,12 @@ class RattleOperation(OperationsBase):
         Else will return an atoms object if at least one of the atoms has been rattled
     """
     def __init__(self, slab,variable_types,variable_range,n_to_move =1,ratio_of_covalent_radii=0.7,
-            rng=np.random,strict = False):
+            rng=np.random,strict = False,rattle_strength = 1.0):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
 
         self.n_to_move = n_to_move
-        self.stric = strict
+        self.strict = strict
+        self.rattle_strength = rattle_strength
     
     def rattle(self, a1):
 
@@ -43,17 +44,26 @@ class RattleOperation(OperationsBase):
             if(pos not in displaced_atoms):
                 displaced_atoms.append(pos)
         success = 0 
+
         for i in displaced_atoms:
             atoms = None
             count = 0
             while atoms == None and count < maxtries: 
                 count += 1
                 atoms = self.rattle_operation(return_atoms, i)
+
+                ats = self.slab.copy()
+
+                atoms.extend(self.slab.copy())
+
+                if atoms_too_close(ats, self.blmin):
+                    atoms = None
+
             if atoms != None:
                 success += 1
-                return_atoms = atoms
+                return_atoms = atoms.copy()
 
-        if(self.stric):
+        if(self.strict):
             if(success == n_moved):
                 return return_atoms
             return None
@@ -71,13 +81,16 @@ class RattleOperation(OperationsBase):
         cm = at.get_center_of_mass(scaled = True)
         at_pos = at[position].scaled_position
     
-        x,y,z = (self.rng.rand()+at_pos[0]) % 1.0,(self.rng.rand()+at_pos[1]) % 1.0,(self.rng.rand()+at_pos[2]) % 1.0
+        x = (self.rattle_strength * self.rng.rand()+at_pos[0]) % 1.0
+        y = (self.rattle_strength * self.rng.rand()+at_pos[1]) % 1.0
+        z = (self.rattle_strength * self.rng.rand()+at_pos[2]) % 1.0
+
         new_pos = np.array([x,y,z])
-        if( -np.dot(np.linalg.norm(at_pos - cm ),np.linalg.norm(new_pos-at_pos)) < self.rng.rand() ):
+        if( -np.dot(np.linalg.norm(at_pos - cm ),np.linalg.norm(new_pos-at_pos)) > self.rng.rand() ):
             print("None2")
             return None
         
-        if len(self.slab > 0 ):
+        if (len(self.slab )> 0 ):
             slab_cm = self.slab.get_center_of_mass(scaled = True)
             if not (self.rng.rand() > np.dot(np.linalg.norm(slab_cm - cm),np.linalg.norm(new_pos -cm))):
                 print("None")

@@ -151,7 +151,7 @@ class DataBaseInterface:
             
         if(wt['total'] > 0):
             atoms.sort(key=lambda x: (x.info['key_value_pairs']['raw_score'] * wt_strength *( 1.0-(wt[x.info['key_value_pairs']['var_stc']] / wt['total'])) *
-             penalty_strength * -x.info['key_value_pairs']['parent_penalty']),reverse = True)
+                penalty_strength * -x.info['key_value_pairs']['parent_penalty']),reverse = True)
         else:
             atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
         if(len(atoms)>n):

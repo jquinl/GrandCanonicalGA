@@ -30,8 +30,6 @@ class PermutationOperation(OperationsBase):
         a1 = a1[len(self.slab) :len(a1)]
 
         indices = np.array([ a for a in np.arange(len(a1))])
-        variable_indices = np.array([ a for a in np.arange(len(a1)) if a > len(self.constant)])
-        
 
         unique_types =[]
         for a in a1.numbers:
