@@ -11,8 +11,9 @@ class AddOperation(OperationsBase):
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
-    
-    def add(self, a1, a2):
+
+    def mutate(self, a1, a2):
+        super().mutate(a1,a2)
         """Crosses the two atoms objects and returns one"""
 
         #check that a1 and a2 share a cell with initialized slef.slab
@@ -57,8 +58,8 @@ class AddOperation(OperationsBase):
                 continue
             atoms.info['stc']= var_id 
             
-            return atoms
-        return None
+            return atoms,1
+        return None,1
 
     def get_addition_by_pairing(self,a1,a2,place = 0):
 

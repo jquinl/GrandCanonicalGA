@@ -11,7 +11,8 @@ class RemoveOperation(OperationsBase):
                 rng=np.random):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
 
-    def remove(self, a1,index=None):
+    def mutate(self, a1,a2):
+        super().mutate( a1,a2)
         """If index is not provided removes a random atom of the variable type, If it is provided removes the atom at that index as long as its of variable type """
 
         #check that a1 and a2 share a cell with initialized slef.slab
@@ -34,12 +35,7 @@ class RemoveOperation(OperationsBase):
             pop_int = self.rng.randint(0,len(poppable_indices)-1)
             rand_atm = poppable_indices[pop_int]
             
-            if(index is not None and index not in poppable_indices):
-                raise ValueError("Provided index does not belong to a removable atom")
-            elif(index is not None and index  in poppable_indices):
-                child.pop(index)
-            else:
-                child.pop(poppable_indices[rand_atm])
+            child.pop(poppable_indices[rand_atm])
 
             atoms  = self.slab.copy()
 
@@ -50,7 +46,6 @@ class RemoveOperation(OperationsBase):
             var_id = self.get_var_id(atoms)
             if(var_id is None):
                 continue
-
             atoms.info['stc']= var_id
-            return atoms
-        return None
+            return atoms,1
+        return None,1

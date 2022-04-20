@@ -1,7 +1,4 @@
-import numbers
-from tokenize import Number
 import numpy as np
-from ase import Atoms
 from ase.ga.utilities import atoms_too_close
 
 from .OperationsBase import OperationsBase
@@ -16,7 +13,9 @@ class PermutationOperation(OperationsBase):
  
         self.delete_chance = delete_chance
 
-    def permutate(self, a1):
+    def mutate(self, a1, a2):
+        super().mutate(a1,a2)
+
         """Swaps two atoms of different type
         """
 
@@ -82,10 +81,9 @@ class PermutationOperation(OperationsBase):
             # Passed all the tests
         
             atoms.info['stc']= var_id 
-            return atoms
+            return atoms,1
 
-        return None
-
+        return None,1
 
     def swap(self,at,i1,i2):
         atoms = at.copy()

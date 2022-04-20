@@ -1,5 +1,6 @@
 
 
+from abc import ABC,abstractmethod
 from typing import List, Dict, Any
 import hashlib
 import json
@@ -9,7 +10,7 @@ from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 
-class OperationsBase:
+class OperationsBase(ABC):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
@@ -25,6 +26,10 @@ class OperationsBase:
         self.rng = rng
 
         self.blmin = self.__set_blmin(slab, variable_types)
+
+    @abstractmethod
+    def mutate(self, a1, a2):
+        pass
 
     def mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)):

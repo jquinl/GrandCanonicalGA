@@ -1,8 +1,5 @@
-from typing import List
 import numpy as np
 from ase import Atoms
-from ase.data import atomic_numbers
-from ase.build import molecule
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 from ase.ga.startgenerator import StartGenerator
 
@@ -77,7 +74,12 @@ class RandomCandidateGenerator(OperationsBase):
 
     def get_random_candidate(self,maxiter=None) -> Atoms:
         "Returns a random structure from all the possible stoichiometries"
-        return  self.get_candidate_by_number(number = np.randnint(len(self.combination_matrix),maxiter=maxiter))
+        return  self.get_candidate_by_number(number = np.random.randint(len(self.combination_matrix)),maxiter=maxiter)
+    
+    "The mutate override to be used in runtime is placed here, it calls the get_random_candidate method"
+    def mutate(self, a1, a2):
+        super().mutate(a1,a2)
+        return self.get_random_candidate(), 0
 
     def get_starting_population(self,population_size=20,maxiter=None):
         starting_population = []
@@ -97,11 +99,13 @@ class RandomCandidateGenerator(OperationsBase):
             return starting_population
         else:
             raise Exception("Provided variable number not in range")
+
     #"Private Methods do not touch"
     def __get_cell_params(self,slab,random_generation_box_size):
         "Gets cell parameters from inputed slab"
         if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
         if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
+
         pos = slab.get_positions()
         cell = slab.get_cell()
         if(len(pos) == 0):

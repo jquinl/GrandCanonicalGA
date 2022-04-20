@@ -53,6 +53,9 @@ removing = RM(slab,variable_types,variable_range)
 permutating = PM(slab,variable_types,variable_range)
 rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.1)
 
+mutations = [crossing,candidateGenerator,adding,removing,permutating,rattling]
+chances = [0.3,0.2,0.1,0.2,0.2,0.1]
+
 population = 21
 
 starting_pop = candidateGenerator.get_starting_population(population_size=population)
@@ -93,7 +96,14 @@ while db.get_number_of_unrelaxed_candidates() > 0:
 
 #Overall fitness value
 steps = 1000
-for i in range(steps):
+maxtries = 10000
+
+counter = 0
+maxcounter = 0
+
+while counter < steps and maxcounter < maxtries:
+    maxcounter += 1
+
     atomslist = db.get_better_candidates_weighted(n=50)
     ranges = len(atomslist)
     #Choose two of the most stable structures to pair
@@ -102,42 +112,41 @@ for i in range(steps):
     if(ranges >1):
         while cand1 == cand2:
             cand2 = np.random.randint(0,ranges -1)
+
     #Mate the particles
-        res  = crossing.cross(atomslist[cand1],atomslist[cand2])
+        res,mut  = crossing.mutate(atomslist[cand1],atomslist[cand2])
         if(res is not None):
+            print("Crossed--------------------------------------------------------------------------------------------------------------------------------")
             db.update_penalization(atomslist[cand1])
             db.update_penalization(atomslist[cand2])
             db.add_unrelaxed_candidate(res)
+            counter+=1
         else:
-            tries = 0
-            while tries < 10:
-                tries += 1
-                
-                a = np.random.randint(0,3)
-                if(a==0):
-                    at =  adding.add(atomslist[cand1],atomslist[cand2])
-                    if(at is not None):
-                        tries = 10
-                        db.update_penalization(atomslist[cand1])
-                        db.add_unrelaxed_candidate(at)
-                if(a == 1):
-                    at = removing.remove(atomslist[cand1])
-                    if(at is not None):
-                        tries = 10
-                        db.update_penalization(atomslist[cand1])
-                        db.add_unrelaxed_candidate(at)
-                if(a == 2):
-                    at = permutating.permutate(atomslist[cand1])
-                    if(at is not None):
-                        tries = 10
-                        db.update_penalization(atomslist[cand1])
-                        db.add_unrelaxed_candidate(at)
-                if(a == 3):
-                    at = rattling.rattle(atomslist[cand1])
-                    if(at is not None):
-                        tries = 10
-                        db.update_penalization(atomslist[cand1])
-                        db.add_unrelaxed_candidate(at)
+        #If it doesn't succesfully mate particles it performs the selected mutations
+            rnd = np.random.rand()
+            chance = 0.0
+            permut = 0
+            if len(mutations) != len(chances): raise Exception("Lenght of mutations array is different from the chances array")
+            child = None
+            for k in range(len(mutations)):
+                chance+= chances[k]
+                placeholder,mut = mutations[k].mutate(atomslist[cand1],atomslist[cand2])
+                if(placeholder is not None):
+                    child = placeholder.copy()
+                    permut = mut
+                if (rnd < chance and placeholder is not None):
+                    break
+            if child is not None:
+                db.add_unrelaxed_candidate(child)
+                if permut == 0:
+                    pass
+                elif permut == 1:
+                    db.update_penalization(atomslist[cand1])
+                elif permut == 2:
+                    db.update_penalization(atomslist[cand1])
+                    db.update_penalization(atomslist[cand2])
+                counter+=1
+
 
         while db.get_number_of_unrelaxed_candidates() > 0:
 

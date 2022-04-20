@@ -17,7 +17,9 @@ class CrossOperation(OperationsBase):
         self.stc_change_chance = stc_change_chance
 
 
-    def cross(self, a1, a2):
+    def mutate(self, a1, a2):
+        super().mutate( a1,a2)
+
         """Crosses the two atoms objects and returns one"""
 
         allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 
@@ -82,9 +84,9 @@ class CrossOperation(OperationsBase):
                     continue
         
             atoms.info['stc']= self.get_var_id(atoms)
-            return atoms
+            return atoms,2
 
-        return None
+        return None,2
 
 
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):

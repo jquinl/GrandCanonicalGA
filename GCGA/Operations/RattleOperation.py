@@ -1,9 +1,4 @@
-from multiprocessing.sharedctypes import Value
-import re
-from turtle import dot
-from matplotlib import scale
 import numpy as np
-from ase import  Atoms
 from ase.ga.utilities import atoms_too_close
 
 from .OperationsBase import OperationsBase
@@ -21,7 +16,8 @@ class RattleOperation(OperationsBase):
         self.strict = strict
         self.rattle_strength = rattle_strength
     
-    def rattle(self, a1):
+    def mutate(self, a1, a2):
+        super().mutate(a1,a2)
 
         if(self.slab.get_cell().all() != a1.get_cell().all()):
             raise ValueError('Different cell sizes found for slab and inputed structures')
@@ -65,12 +61,12 @@ class RattleOperation(OperationsBase):
 
         if(self.strict):
             if(success == n_moved):
-                return return_atoms
-            return None
+                return return_atoms,1
+            return None,1
         else:
             if(success == 0):
-                return None
-            return return_atoms    
+                return None,1
+            return return_atoms,1
        
     def rattle_operation(self,atoms, position):
 
