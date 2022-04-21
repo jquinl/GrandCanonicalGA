@@ -108,13 +108,16 @@ class DataBaseInterface:
             atoms.append(at)
         return list(atoms)
     
-    def get_better_candidates(self,n=1):
+    def get_better_candidates(self,n=1,max=False):
 
         atoms = self.get_relaxed_candidates()
         atoms.sort(key=lambda x: x.info['key_value_pairs']['raw_score'],reverse = True)
 
-        if(len(atoms)>n):
-            return list(atoms[:n])
+        if max == False:
+            if(len(atoms)>n):
+                return list(atoms[:n])
+            else:
+                return list(atoms[:len(atoms)-1])
         else:
             return list(atoms[:len(atoms)-1])
 

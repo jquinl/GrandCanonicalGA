@@ -15,7 +15,9 @@ class CrossOperation(OperationsBase):
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
-
+    
+    def mutate(self):
+        return super().mutate()
 
     def mutate(self, a1, a2):
         super().mutate( a1,a2)

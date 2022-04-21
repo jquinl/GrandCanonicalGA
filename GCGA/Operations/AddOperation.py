@@ -12,6 +12,9 @@ class AddOperation(OperationsBase):
                 rng=np.random):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
 
+    def mutate(self):
+        return super().mutate()
+        
     def mutate(self, a1, a2):
         super().mutate(a1,a2)
         """Crosses the two atoms objects and returns one"""

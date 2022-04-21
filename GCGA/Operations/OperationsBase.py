@@ -28,6 +28,9 @@ class OperationsBase(ABC):
         self.blmin = self.__set_blmin(slab, variable_types)
 
     @abstractmethod
+    def mutate():
+        pass
+    @abstractmethod
     def mutate(self, a1, a2):
         pass
 
