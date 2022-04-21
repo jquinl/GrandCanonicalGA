@@ -95,33 +95,33 @@ class GCGA:
     def __default_instancing(self,isClass):
 
             if type(isClass) is RCG:
-                return RCG(self.slab,self.variable_types,self.variable_range)
+                return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if type(isClass) is  CO:
-                return CO(self.slab,self.variable_types,self.variable_range,minfrac=0.1)
+                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
             if type(isClass) is  AD:
-                return AD(self.slab,self.variable_types,self.variable_range)
+                return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if type(isClass) is  RM:
-                return RM(self.slab,self.variable_types,self.variable_range)
+                return RM(self.slab,self.atomic_types,self.atomic_ranges)
             if type(isClass) is  PM:
-                return PM(self.slab,self.variable_types,self.variable_range)
+                return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if type(isClass) is  RT:
-                return RT(self.slab,self.variable_types,self.variable_range,n_to_move = 1,rattle_strength = 0.1)
+                return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
 
             raise TypeError("Provided mutation type is not supported",type(isClass))
     
     def __default_instancing_string(self,isClass):   
             if isClass == "random":
-                return RCG(self.slab,self.variable_types,self.variable_range)
+                return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "cross":
-                return CO(self.slab,self.variable_types,self.variable_range,minfrac=0.1)
+                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
             if isClass == "add":
-                return AD(self.slab,self.variable_types,self.variable_range)
+                return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "remove":
-                return RM(self.slab,self.variable_types,self.variable_range)
+                return RM(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "permute":
-                return PM(self.slab,self.variable_types,self.variable_range)
+                return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "rattle":
-                return RT(self.slab,self.variable_types,self.variable_range,n_to_move = 1,rattle_strength = 0.1)
+                return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
 
             raise TypeError("Provided mutation string is not supported:",isClass)
     
@@ -135,9 +135,8 @@ class GCGA:
         chances = self.mutation_chances
         population = self.starting_poupulation
 
-        candidateGenerator =self.initial_structure_generator(self.slab,self.variable_types,self.variable_range)
         #--------------------------------Generate initial population---------------------------------"
-        starting_pop = candidateGenerator.get_starting_population(population_size=population)
+        starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
 
 
         for i in starting_pop:
