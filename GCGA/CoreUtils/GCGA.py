@@ -1,3 +1,4 @@
+from typing_extensions import Self
 from ase import Atom, Atoms
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Operations.OperationsBase import OperationsBase
@@ -19,7 +20,7 @@ class GCGA:
     def __init__(self,calculator, slab,atomic_types,atomic_ranges,mutation_operations
                 ,mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_poupulation = 20,population_size = 50,
+                starting_population = 20,population_size = 50,
                 stoichiometry_weight = 1.0,penalty_strength = 0.0,
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
@@ -35,7 +36,7 @@ class GCGA:
         self.db_name = db_name
         self.filename = structures_filename
 
-        self.starting_pupulation = starting_poupulation
+        self.starting_population = starting_population
         self.population = population_size
         self.wt = stoichiometry_weight
         self.pts = penalty_strength
@@ -44,67 +45,68 @@ class GCGA:
         self.crossing_operator =self.__initialize_crossing(crossing_operator,CO)
 
         self.steps = steps
-        self.maxtries = maxtries
+        self.maxtries = max(steps*10,maxtries)
 
         self.write_running = write_while_running
         self.write_size = write_size
 
     def __initialize_crossing(self,crossing,ctype)-> object:
 
-        if issubclass(crossing,CO):
-            return crossing
-        elif type(crossing) is type(ctype):
-            return self.__default_instancing(crossing)
+        if issubclass(crossing,ctype):
+            return self.__mutation_to_instance(crossing)
         else:
             raise TypeError ("Unssupported Crossing operator")
 
     def __initialize_generator(self,gen,gtype)-> object:
-        print(type(gtype),type(gen))
-        if issubclass(gen,RCG):
-            return gen
-        elif type(gen) is type(gtype):
-            return self.__default_instancing(gen)
+        if issubclass(gen,gtype):
+            return self.__mutation_to_instance(gen)
         else:
             raise TypeError ("Unssupported Random structure generator")
 
     def __initialize_mutations(self,mutations,mutation_chance):
 
-        if(not isinstance(mutations,list)): raise TypeError("The mutations variable is not a list of mutation operator")
-        if(not isinstance(mutation_chance,list)):raise TypeError("The mutations variable is not a list of floats")
-        if(len(mutations)== 0): raise ValueError("The mutations list is empty")
-        if(len(mutation_chance)== 0): raise ValueError("The mutations chance list is empty")
-        if(not isinstance(mutation_chance[0],float)):raise TypeError("The mutations chance is not a list of floats")
-        if(len(mutations)!= len(mutation_chance)): raise ValueError("The mutations list and the chances list dont have the same size")
-        print(mutations)
+        if(not isinstance(mutations,list)):             raise TypeError("The mutations variable is not a list of mutation operator")
+        if(not isinstance(mutation_chance,list)):       raise TypeError("The mutations variable is not a list of floats")
+        if(len(mutations)== 0):                         raise ValueError("The mutations list is empty")
+        if(len(mutation_chance)== 0):                   raise ValueError("The mutations chance list is empty")
+        if(not isinstance(mutation_chance[0],float)):   raise TypeError("The mutations chance is not a list of floats")
+        if(len(mutations)!= len(mutation_chance)):      raise ValueError("The mutations list and the chances list dont have the same size")
+
         mut = []
         for i in mutations:
             if isinstance(i,str):
                 mut.append( self.__default_instancing_string(i))
             else:
-                try:
-                    i.mutate()
-                    mut.append(i)
-                except:
-                    try:
-                        new_cls = self.__default_instancing(i)
-                        new_cls.mutate()
-                        mut.append(new_cls)
-                    except:
-                        raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
+                mut.append(self.__mutation_to_instance(i))
+
         return list(mut),mutation_chance
+
+    def __mutation_to_instance(self,isClass):
+            try:
+                isClass.mutation_instance()
+                return isClass
+            except:
+                try:
+                    isClass.mutation_class()
+                    new_cls = self.__default_instancing(isClass)
+                    new_cls.mutation_instance()
+                    return new_cls
+                except:
+                    raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
+
     def __default_instancing(self,isClass):
 
-            if type(isClass) is RCG:
+            if issubclass(isClass,RCG):
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
-            if type(isClass) is  CO:
+            if issubclass(isClass,CO):
                 return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
-            if type(isClass) is  AD:
+            if issubclass(isClass,AD):
                 return AD(self.slab,self.atomic_types,self.atomic_ranges)
-            if type(isClass) is  RM:
+            if issubclass(isClass,RM):
                 return RM(self.slab,self.atomic_types,self.atomic_ranges)
-            if type(isClass) is  PM:
+            if issubclass(isClass,PM):
                 return PM(self.slab,self.atomic_types,self.atomic_ranges)
-            if type(isClass) is  RT:
+            if issubclass(isClass,RT):
                 return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
 
             raise TypeError("Provided mutation type is not supported",type(isClass))
@@ -133,7 +135,7 @@ class GCGA:
         calc = self.calc
         mutations = self.mutation_operations
         chances = self.mutation_chances
-        population = self.starting_poupulation
+        population = self.starting_population
 
         #--------------------------------Generate initial population---------------------------------"
         starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
@@ -143,7 +145,6 @@ class GCGA:
             db.add_unrelaxed_candidate(i)
 
         #---------------------------------Relax initial structures-----------------------------------"
-        env = 1.0 #Environment chem pot
 
         while db.get_number_of_unrelaxed_candidates() > 0:
 
@@ -182,7 +183,6 @@ class GCGA:
             #Mate the particles
                 res,mut  = self.crossing_operator.mutate(atomslist[cand1],atomslist[cand2])
                 if(res is not None):
-                    print("Crossed--------------------------------------------------------------------------------------------------------------------------------")
                     db.update_penalization(atomslist[cand1])
                     db.update_penalization(atomslist[cand2])
                     db.add_unrelaxed_candidate(res)
@@ -199,6 +199,7 @@ class GCGA:
                         placeholder,mut = mutations[k].mutate(atomslist[cand1],atomslist[cand2])
                         if(placeholder is not None):
                             child = placeholder.copy()
+                            
                             permut = mut
                         if (rnd < chance and placeholder is not None):
                             break
@@ -223,13 +224,13 @@ class GCGA:
                     dyn.run(steps=100, fmax=0.05)
                     atoms.get_potential_energy()
 
-                    atoms.info['key_value_pairs']['raw_score'] = -fitness_function(atoms)
+                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
                     db.update_to_relaxed(atoms)
 
                 if(self.write_running):
                     atomslist = db.get_better_candidates(n=self.write_size)
-                    write(self.structures_filename,atomslist)
+                    write(self.filename,atomslist)
 
         atomslist = db.get_better_candidates(max=True)
-        write(self.structures_filename,atomslist)
+        write(self.filename,atomslist)

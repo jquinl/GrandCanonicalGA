@@ -77,8 +77,6 @@ class RandomCandidateGenerator(OperationsBase):
         return  self.get_candidate_by_number(number = np.random.randint(len(self.combination_matrix)),maxiter=maxiter)
     
 
-    def mutate(self):
-        return super().mutate()
     "The mutate override to be used in runtime is placed here, it calls the get_random_candidate method"
     def mutate(self, a1, a2):
         super().mutate(a1,a2)
