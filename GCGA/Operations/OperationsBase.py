@@ -1,6 +1,7 @@
 
 
 from abc import ABC,abstractmethod
+from turtle import Turtle
 from typing import List, Dict, Any
 import hashlib
 import json
@@ -26,6 +27,12 @@ class OperationsBase(ABC):
         self.rng = rng
 
         self.blmin = self.__set_blmin(slab, variable_types)
+
+    @classmethod
+    def mutation_class(self):
+        return True
+    def mutation_instance(self):
+        return True
 
     @abstractmethod
     def mutate(self, a1, a2):

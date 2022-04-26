@@ -15,8 +15,7 @@ class CrossOperation(OperationsBase):
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
-
-
+    
     def mutate(self, a1, a2):
         super().mutate( a1,a2)
 
@@ -83,7 +82,7 @@ class CrossOperation(OperationsBase):
                 if(self.rng.rand() > self.stc_change_chance):
                     continue
         
-            atoms.info['stc']= self.get_var_id(atoms)
+            atoms.info['stc']= var_id
             return atoms,2
 
         return None,2

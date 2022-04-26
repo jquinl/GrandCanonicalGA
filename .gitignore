@@ -13,3 +13,4 @@ __pycache__/**
 !pt.traj
 test_set
 test_set/**
+out*

@@ -11,6 +11,7 @@ class RemoveOperation(OperationsBase):
                 rng=np.random):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
 
+   
     def mutate(self, a1,a2):
         super().mutate( a1,a2)
         """If index is not provided removes a random atom of the variable type, If it is provided removes the atom at that index as long as its of variable type """

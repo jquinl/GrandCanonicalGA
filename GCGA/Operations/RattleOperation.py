@@ -16,6 +16,8 @@ class RattleOperation(OperationsBase):
         self.strict = strict
         self.rattle_strength = rattle_strength
     
+
+
     def mutate(self, a1, a2):
         super().mutate(a1,a2)
 
@@ -59,6 +61,11 @@ class RattleOperation(OperationsBase):
                 success += 1
                 return_atoms = atoms.copy()
 
+        var_id = self.get_var_id(return_atoms)
+        if var_id is None:
+            return None,1
+            
+        return_atoms.info['stc'] = var_id
         if(self.strict):
             if(success == n_moved):
                 return return_atoms,1
