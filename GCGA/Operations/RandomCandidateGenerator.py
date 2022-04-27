@@ -40,10 +40,10 @@ class RandomCandidateGenerator(OperationsBase):
 
         atoms = Atoms()
         new_atoms = self.combination_matrix[number]
-
         for i in range(len(new_atoms)):
             for j in range(new_atoms[i]):
                 atoms.extend(self.variable_types[i])
+
         #Consider using self.blmin here see if it works
 
         if(len(atoms) == 0):
@@ -84,7 +84,7 @@ class RandomCandidateGenerator(OperationsBase):
 
     def get_starting_population(self,population_size=20,maxiter=None):
         starting_population = []
-        single_population_size = int(population_size/len(self.combination_matrix))
+        single_population_size = max(1,int(population_size/len(self.combination_matrix)))
         for i in range(len(self.combination_matrix)):
             for j in range(single_population_size):
                 atoms = self.get_candidate_by_number(i,maxiter=maxiter)

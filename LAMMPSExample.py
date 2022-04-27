@@ -14,9 +14,7 @@ import numpy as np
 ###########################
 from ase.io import read
 #Calculator
-from ase.optimize import BFGS
-from ase.calculators.emt import EMT
-
+from ase.calculators.lammpslib import LAMMPSlib
 #Define the fitness fucntion for your atoms it must take in an atoms object as parameter and return a float for the code to work"
 
 def fitness_function(atoms)-> float:
@@ -43,8 +41,8 @@ slab = Atoms(cell=[a,a,a],
 
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
-variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20]]
+variable_types = [Atoms('Zn'),Atoms('O'),Atoms('H')]
+variable_range = [[1],[1,2],[1,2]]
 
 #Indicate mutations to be performed during the run. They can be passes as an instantiated class, as a type or as a string,
 # If passed as type or string, they will be instantiated with default values. A more precisse fine tuning of the run requeres the classes to be preinstantiated when
@@ -74,8 +72,16 @@ from GCGA.Operations.RattleOperation import RattleOperation as RT
 mutations = [crossing,candidateGenerator,AD,removing,"permute",rattling]
 chances = [0.3,0.2,0.1,0.2,0.1,0.1]
 
+#Define calculator for LAMMPS
+
+cmds = ["pair_style reaxff",
+        "pair_coeff * * ffield.reax.ZnOH H O Zn",
+        "run 20"]
+
+lammps = LAMMPSlib(lmpcmds=cmds, log_file='test.log')
+
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(EMT(),slab,variable_types,variable_range,mutations,chances,fitness_function,steps= 1000)
+gcga = GCGA(slab,variable_types,variable_range,mutations,chances,fitness_function,starting_population=5,calculator = lammps,steps= 10)
 
 #Calling the run function will initialize the run
 gcga.run()

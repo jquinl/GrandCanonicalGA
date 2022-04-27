@@ -1,7 +1,5 @@
-from typing_extensions import Self
-from ase import Atom, Atoms
+from struct import calcsize
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
-from GCGA.Operations.OperationsBase import OperationsBase
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.AddOperation import AddOperation as AD
@@ -12,16 +10,19 @@ from GCGA.Operations.RattleOperation import RattleOperation as RT
 import numpy as np
 from ase.io import write
 
+"Supported calculators"
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
+from ase.calculators.lammpslib import LAMMPSlib
+
 
 class GCGA:
 
-    def __init__(self,calculator, slab,atomic_types,atomic_ranges,mutation_operations
+    def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations
                 ,mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
                 starting_population = 20,population_size = 50,
-                stoichiometry_weight = 1.0,penalty_strength = 0.0,
+                stoichiometry_weight = 1.0,penalty_strength = 0.0,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
                 write_while_running = True,write_size = 10000):
@@ -132,14 +133,12 @@ class GCGA:
 #---------------------------Define starting population--------------------------------"
         db = DBI(self.db_name)
 
-        calc = self.calc
         mutations = self.mutation_operations
         chances = self.mutation_chances
         population = self.starting_population
 
         #--------------------------------Generate initial population---------------------------------"
         starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
-
 
         for i in starting_pop:
             db.add_unrelaxed_candidate(i)
@@ -150,11 +149,8 @@ class GCGA:
 
             atoms = db.get_first_unrelaxed()
             
-            atoms.calc = calc
-            dyn = BFGS(atoms)
-            dyn.run(steps=100, fmax=0.05)
-            atoms.get_potential_energy()
-            
+            atoms = self.relax(atoms)
+
             atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
         
             db.update_to_relaxed(atoms)
@@ -174,11 +170,11 @@ class GCGA:
             atomslist = db.get_better_candidates_weighted_penalized(n=self.population,wt_strength =self.wt,penalty_strength=self.pts )
             ranges = len(atomslist)
             #Choose two of the most stable structures to pair
-            cand1 = np.random.randint(0,ranges - 1)
-            cand2 = np.random.randint(0,ranges - 1)
+            cand1 = np.random.randint(ranges)
+            cand2 = np.random.randint(ranges)
             if(ranges >1):
                 while cand1 == cand2:
-                    cand2 = np.random.randint(0,ranges -1)
+                    cand2 = np.random.randint(ranges)
 
             #Mate the particles
                 res,mut  = self.crossing_operator.mutate(atomslist[cand1],atomslist[cand2])
@@ -199,7 +195,6 @@ class GCGA:
                         placeholder,mut = mutations[k].mutate(atomslist[cand1],atomslist[cand2])
                         if(placeholder is not None):
                             child = placeholder.copy()
-                            
                             permut = mut
                         if (rnd < chance and placeholder is not None):
                             break
@@ -214,15 +209,10 @@ class GCGA:
                             db.update_penalization(atomslist[cand2])
                         counter+=1
 
-
                 while db.get_number_of_unrelaxed_candidates() > 0:
 
                     atoms = db.get_first_unrelaxed()
-
-                    atoms.calc = calc
-                    dyn = BFGS(atoms)
-                    dyn.run(steps=100, fmax=0.05)
-                    atoms.get_potential_energy()
+                    atoms = self.relax(atoms)
 
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
@@ -234,3 +224,20 @@ class GCGA:
 
         atomslist = db.get_better_candidates(max=True)
         write(self.filename,atomslist)
+
+    def relax(self,atoms):
+        if(isinstance(self.calc,EMT)):
+            atoms.calc = self.calc
+            dyn = BFGS(atoms)
+            dyn.run(steps=100, fmax=0.05)
+            atoms.get_potential_energy()
+        if(isinstance(self.calc,LAMMPSlib)):
+            try:
+                atoms.calc = self.calc
+                atoms.get_potential_energy()
+            except:
+                raise Exception("LAMMPS not installed")
+        else:
+            atoms.calc = self.calc
+            atoms.get_potential_energy()
+        return atoms
