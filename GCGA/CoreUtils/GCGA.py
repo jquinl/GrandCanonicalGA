@@ -11,6 +11,7 @@ import numpy as np
 from ase.io import write
 
 "Supported calculators"
+from ase.calculators.singlepoint import SinglePointCalculator
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
 from ase.calculators.lammpslib import LAMMPSlib
@@ -18,14 +19,14 @@ from ase.calculators.lammpslib import LAMMPSlib
 
 class GCGA:
 
-    def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations
-                ,mutation_chances,fitness_function,
+    def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
+                mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
                 starting_population = 20,population_size = 50,
                 stoichiometry_weight = 1.0,penalty_strength = 0.0,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
-                write_while_running = True,write_size = 10000):
+                ):
         
         self.calc = calculator
         self.slab = slab
@@ -47,9 +48,6 @@ class GCGA:
 
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
-
-        self.write_running = write_while_running
-        self.write_size = write_size
 
     def __initialize_crossing(self,crossing,ctype)-> object:
 
@@ -155,6 +153,7 @@ class GCGA:
         
             db.update_to_relaxed(atoms)
 
+
         #--------------------------------------Find better stoich to srtart eval----------------------------
 
         #Overall fitness value
@@ -164,7 +163,6 @@ class GCGA:
         counter = 0
         maxcounter = 0
 
-        atoms_generated = []
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
 
@@ -216,30 +214,45 @@ class GCGA:
                     atoms = self.relax(atoms)
 
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-
+                    
                     db.update_to_relaxed(atoms)
-                    atoms_generated.append(atoms)
-
-                if(self.write_running):
-                    write(self.filename,atoms_generated)
 
         atomslist = db.get_better_candidates(max=True)
 
         write("sorted_" + self.filename,atomslist)
 
+    def append_to_file(self,atoms):
+        
+        write(self.filename,atoms,append=True)
+
     def relax(self,atoms):
+
+        results = None
         if(isinstance(self.calc,EMT)):
-            atoms.calc = self.calc
+            atoms.set_calculator( self.calc)
             dyn = BFGS(atoms)
             dyn.run(steps=100, fmax=0.05)
-            atoms.get_potential_energy()
+            E = atoms.get_potential_energy()
+            F = atoms.get_forces()
+            results = {'energy': E,'forces': F}
         if(isinstance(self.calc,LAMMPSlib)):
             try:
-                atoms.calc = self.calc
-                atoms.get_potential_energy()
+                atoms.set_calculator(self.calc)
+                E = atoms.get_potential_energy()
+                F = atoms.get_forces()
+                results = {'energy': E,'forces': F}
             except:
                 raise Exception("LAMMPS not installed")
         else:
-            atoms.calc = self.calc
+            atoms.set_calculator(self.calc)
             atoms.get_potential_energy()
-        return atoms
+            E = atoms.get_potential_energy()
+            F = atoms.get_forces()
+            results = {'energy': E,'forces': F}
+        if(results is not None):
+            calc_sp = SinglePointCalculator(atoms, **results)
+            atoms.set_calculator(calc_sp)
+            self.append_to_file(atoms)
+            return atoms
+        else:
+            return None
