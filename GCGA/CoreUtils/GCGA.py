@@ -164,6 +164,7 @@ class GCGA:
         counter = 0
         maxcounter = 0
 
+        atoms_generated = []
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
 
@@ -217,13 +218,14 @@ class GCGA:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
                     db.update_to_relaxed(atoms)
+                    atoms_generated.append(atoms)
 
                 if(self.write_running):
-                    atomslist = db.get_better_candidates(n=self.write_size)
-                    write(self.filename,atomslist)
+                    write(self.filename,atoms_generated)
 
         atomslist = db.get_better_candidates(max=True)
-        write(self.filename,atomslist)
+
+        write("sorted_" + self.filename,atomslist)
 
     def relax(self,atoms):
         if(isinstance(self.calc,EMT)):
