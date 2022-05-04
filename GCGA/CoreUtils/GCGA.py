@@ -8,7 +8,8 @@ from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
 
 import numpy as np
-from ase.io import write
+from ase.io import write, Trajectory
+from os import path
 
 "Supported calculators"
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -36,7 +37,17 @@ class GCGA:
         self.fitness_function = fitness_function
 
         self.db_name = db_name
-        self.filename = structures_filename
+
+        if isinstance(structures_filename, str):
+            self.filename = structures_filename
+            "This performs a hard overwrite, change it later in order to include restarts"
+            if path.exists(structures_filename):
+                self.trajfile = Trajectory(filename=structures_filename, mode='w')
+                self.trajfile.close()
+                self.trajfile = Trajectory(filename=structures_filename, mode='a')
+            else:
+                self.trajfile = Trajectory(filename=structures_filename, mode='a')
+        
 
         self.starting_population = starting_population
         self.population = population_size
@@ -222,8 +233,8 @@ class GCGA:
         write("sorted_" + self.filename,atomslist)
 
     def append_to_file(self,atoms):
-        
-        write(self.filename,atoms,append=True)
+        if(self.trajfile is not None):
+            self.trajfile.write(atoms)
 
     def relax(self,atoms):
 
