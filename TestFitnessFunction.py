@@ -13,4 +13,5 @@ from ase.build import connected_indices as con_ind
 a = read("co_test.traj")
 b = read("co.traj")
 bf = BF({"pO2":5.0},{"Pt":10.0,"Au":5.0})
-bf.submolecules_count(b,a)
+at = bf.find_subunits(b,a)
+write("reuslt.traj",at)
