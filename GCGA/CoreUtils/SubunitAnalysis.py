@@ -37,7 +37,7 @@ class SubunitFinder():
         counter = 0
         for i in clusters:
             print(i)
-            for j in self.__subdivide_clusters(i,atoms,submolecule,dmax=dmax,scale=scale):
+            for j in self.__subdivide_clusters(i,atoms,subunit,dmax=dmax,scale=scale):
                 print(j)
                 for k in j:
                     atoms[k].symbol = atypes[counter]
