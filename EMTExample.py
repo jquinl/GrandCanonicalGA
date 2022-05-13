@@ -2,12 +2,13 @@
 
 from GCGA.CoreUtils.GCGA import GCGA
 from GCGA.Operations.CrossOperation import CrossOperation as CO
-from GCGA.Operations.OperationsBase import OperationsBase
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
+
+from GCGA.FitnessFunction.BaseFitness import GibbsFreeEnergy
 
 from ase import Atoms
 import numpy as np
@@ -33,6 +34,12 @@ def fitness_function(atoms)-> float:
     return -fre
 
 
+base_reference = read('pt.traj@:')[0].get_potential_energy() 
+gold_reference = read('gold_bulk.traj').get_potential_energy() / 500.0
+references = {"Au": gold_reference}
+environment = {"mu_Au": 0.5}
+
+gfe = GibbsFreeEnergy(variable_reference_energies=references,environmental_variables=environment, base_reference_energy= base_reference)
 
 #Indicate static part of the system"
 a = 24.0
@@ -75,7 +82,7 @@ mutations = [crossing,candidateGenerator,AD,removing,"permute",rattling]
 chances = [0.3,0.2,0.1,0.2,0.1,0.1]
 
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(slab,variable_types,variable_range,mutations,chances,fitness_function,calculator = EMT(),steps= 10)
+gcga = GCGA(slab,variable_types,variable_range,mutations,chances,gfe,calculator = EMT(),steps= 10)
 
 #Calling the run function will initialize the run
 gcga.run()

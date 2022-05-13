@@ -1,9 +1,5 @@
-from itertools import count
-from tkinter.tix import Tree
 from ase import Atoms
 from abc import ABC,abstractmethod
-from CoreUtils.SubunitAnalysis import SubunitFinder
-import numpy as np
 
 class BaseFitness(ABC):
 
@@ -18,12 +14,12 @@ class BaseFitness(ABC):
         return True
 
     @abstractmethod
-    def evaluate(self,atoms)-> float:
-        if(not issubclass(atoms,Atoms)):
+    def evaluate(self,slab,atoms)-> float:
+        if(not isinstance(atoms,Atoms)):
             raise TypeError("Fitness function tried to evaluate something other than an ASE atoms object")
         pass
     
-    def __mantains_ordering(self,slab, atoms):
+    def mantains_ordering(self,slab,atoms):
         if(len(atoms) < len(slab)):
             return False
         if(slab.symbols.indices() != atoms[:len(slab)].symbols.indices()):
@@ -41,18 +37,17 @@ class GibbsFreeEnergy(BaseFitness):
         self.multi_ref = False
         self.base_ref = float(base_reference_energy)
         self.references = self.__get_refs(variable_reference_energies)
-        self.references.sort()
         self.env = self.__get_env(environmental_variables)
 
         if len(self.references) == 0: raise ValueError("No reference energies found")
         if len(self.env) == 0: raise ValueError("No environmental variables found")
     
     def evaluate(self,slab, atoms) -> float:
-        super().evaluate(atoms)
+        super().evaluate(slab,atoms)
         energy = atoms.get_potential_energy()
         fitness = 0.0
         if(slab is not None):
-            if(not self.__mantains_ordering(slab,atoms)):
+            if(not self.mantains_ordering(slab,atoms)):
                 raise ValueError("Slab atoms")
         
         at = atoms[len(slab):]
@@ -98,30 +93,13 @@ class GibbsFreeEnergy(BaseFitness):
                     atoms_obj[k[j]].number = 200
         return counts
 
-    def fitness_function(atoms)-> float:
-        env = 1.0
-        ref=read('pt.traj@:')[0].get_potential_energy()    
-
-        au_en =read('gold_bulk.traj').get_potential_energy() / 500.0
-        at_num= atoms.get_atomic_numbers()
-        pt_num = np.count_nonzero(at_num == 78)
-        au_num= np.count_nonzero(at_num == 79)
-
-        fre = atoms.get_potential_energy() - ref- au_num * (au_en) - au_num*env
-
-        return -fre
-
 
     def __compare_indices_to_ref(self,indices):
-        indices.sort()
         for i in indices.keys():
             if (i not in self.references.keys()):
                 self.references[i] = 0.0
             if(i not in self.env[0].keys()):
                 self.env[0][i] = 0.0
-        
-
-                
 
     def __get_refs(self,references):
         if(type(references) is not dict):raise TypeError("references is not a string:float dictionary")
@@ -159,7 +137,7 @@ class GibbsFreeEnergy(BaseFitness):
         for i,j in env.items():
             x = i.split("_")
             if(x[0] == "mu"):
-                env_var[0][x[0]] = x[1]
+                env_var[0][x[1]] = j
         
 
         return list(env_var)

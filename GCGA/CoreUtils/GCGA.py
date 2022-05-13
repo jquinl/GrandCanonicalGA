@@ -1,5 +1,7 @@
+from select import select
 from struct import calcsize
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
+from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.AddOperation import AddOperation as AD
@@ -19,22 +21,24 @@ from ase.calculators.lammpslib import LAMMPSlib
 
 
 class GCGA:
-
+    
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 20,population_size = 50,
+                starting_population = 20,population_size = 20,
                 stoichiometry_weight = 1.0,penalty_strength = 0.0,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
                 ):
-        
+
         self.calc = calculator
         self.slab = slab
         self.atomic_types = atomic_types
         self.atomic_ranges = atomic_ranges
         self.mutation_operations, self.mutation_chances = self.__initialize_mutations(mutation_operations,mutation_chances)
-        self.fitness_function = fitness_function
+
+        self.is_fitness_an_object = False
+        self.fitness_function = self.__initialize_fitness_function(fitness_function)
 
         self.db_name = db_name
 
@@ -137,6 +141,17 @@ class GCGA:
 
             raise TypeError("Provided mutation string is not supported:",isClass)
     
+    def __initialize_fitness_function(self,function):
+        if(callable(function)):
+            self.is_fitness_an_object = False
+            return function
+        if(isinstance(function,BaseFitness)):
+            self.is_fitness_an_object = True
+            return function
+        
+
+        raise Exception("Provided function parameter is not a function or a Object derived from the GCGA.FitnessFunction.BaseFitness class")
+
 
     def run(self):
 #---------------------------Define starting population--------------------------------"
@@ -159,9 +174,10 @@ class GCGA:
             atoms = db.get_first_unrelaxed()
             
             atoms = self.relax(atoms)
-
-            atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-        
+            if(self.is_fitness_an_object):
+                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+            else:    
+                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
             db.update_to_relaxed(atoms)
 
 
@@ -224,7 +240,10 @@ class GCGA:
                     atoms = db.get_first_unrelaxed()
                     atoms = self.relax(atoms)
 
-                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+                    if(self.is_fitness_an_object):
+                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+                    else:    
+                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
                     
                     db.update_to_relaxed(atoms)
 
