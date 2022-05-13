@@ -29,7 +29,7 @@ class OperationsBase(ABC):
         self.blmin = self.__set_blmin(slab, variable_types)
 
     @classmethod
-    def mutation_class(self):
+    def mutation_class(cls):
         return True
     def mutation_instance(self):
         return True

@@ -11,7 +11,7 @@ class SubunitFinder():
         pass
 
     @classmethod
-    def find_subunits(self,subunit,atoms,dmax=None,scale=1.5):
+    def find_subunits(cls,subunit,atoms,dmax=None,scale=1.5):
        # if(not issubclass(submolecule, Atoms)): raise TypeError("Passed argument to __submolecule is not an atoms objects")
         
         symbols = [a.symbol for a in subunit]
@@ -24,7 +24,7 @@ class SubunitFinder():
                 comb_dict[a.index] = new
         clusters = []
         for a in comb_dict.keys():
-            atree = self.__traverse_tree(atoms,comb_dict,a,symbols)
+            atree = cls.__traverse_tree(atoms,comb_dict,a,symbols)
             atree.sort()
             clusters.append(atree)
         
@@ -37,7 +37,7 @@ class SubunitFinder():
         counter = 0
         for i in clusters:
             print(i)
-            for j in self.__subdivide_clusters(i,atoms,subunit,dmax=dmax,scale=scale):
+            for j in cls.__subdivide_clusters(i,atoms,subunit,dmax=dmax,scale=scale):
                 print(j)
                 for k in j:
                     atoms[k].symbol = atypes[counter]
@@ -45,7 +45,7 @@ class SubunitFinder():
         print(atoms)
         return atoms.copy()
     @classmethod
-    def __traverse_tree(self,atoms,dictionary,start_index,symbols):
+    def __traverse_tree(cls,atoms,dictionary,start_index,symbols):
         if(not atoms[start_index].symbol in symbols): raise ValueError("Initial index not in symbols")
         visited_nodes = []
         node_queue = []
@@ -63,7 +63,7 @@ class SubunitFinder():
         return visited_nodes
 
     @classmethod
-    def __subdivide_clusters(self,cluster,atoms,subunit,dmax,scale):
+    def __subdivide_clusters(cls,cluster,atoms,subunit,dmax,scale):
  
         #Gets  unique combinations of the atoms
         nums = subunit.numbers
@@ -86,7 +86,7 @@ class SubunitFinder():
         full_combinations = [comb[i] for i in range(len(comb)) if i not in remove_from_list]
 
         #Creates a sorted matrix containing unique atom pairings and bond distances in the subunit
-        subunit_bonds = self.__bond_type_length(range(len(subunit)),subunit)
+        subunit_bonds = cls.__bond_type_length(range(len(subunit)),subunit)
 
         subunit_bonds.sort(key=lambda x:  x[2])
 
@@ -94,7 +94,7 @@ class SubunitFinder():
         accepted_combinations = []
         for k in full_combinations:
             test_bonds = []
-            test_bonds = self.__bond_type_length(k,atoms)
+            test_bonds = cls.__bond_type_length(k,atoms)
             print(test_bonds)
             test_bonds.sort(key=lambda x: x[2])
             if len(test_bonds) != len(subunit_bonds):
@@ -115,8 +115,8 @@ class SubunitFinder():
             for i in range(len(accepted_combinations)):
               
                 if any(x in accepted_combinations[i] for x in k):
-                    sum_new = self.__total_bond_lenght(k,atoms)
-                    sum_old = self.__total_bond_lenght(accepted_combinations[i],atoms)
+                    sum_new = cls.__total_bond_lenght(k,atoms)
+                    sum_old = cls.__total_bond_lenght(accepted_combinations[i],atoms)
 
                     if(sum_new < sum_old):
                         accepted_combinations[i] = k
@@ -130,7 +130,7 @@ class SubunitFinder():
         return accepted_combinations
     
     @classmethod
-    def __bond_type_length(self,indices,atoms):
+    def __bond_type_length(cls,indices,atoms):
         pairs = []
         total_bond = []
         for i in indices:
@@ -142,7 +142,7 @@ class SubunitFinder():
         return total_bond
     
     @classmethod
-    def __total_bond_lenght(self,indices,atoms):
+    def __total_bond_lenght(cls,indices,atoms):
         pairs = []
         total_bond_length = 0.0
         for i in indices:
