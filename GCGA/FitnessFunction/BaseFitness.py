@@ -27,7 +27,6 @@ class BaseFitness(ABC):
 
         return True
 
-
 class GibbsFreeEnergy(BaseFitness):
 
     supported_environment_variable_types = ["mu"]
@@ -68,7 +67,7 @@ class GibbsFreeEnergy(BaseFitness):
             for i,j in self.env[0].items():
                 fitness -= (len(indices[i]) * counts[j])
 
-        return fitness
+        return -fitness
         
     def __get_molecule_counts(self,atoms,indices):
         atoms_obj = atoms.copy()
@@ -92,7 +91,6 @@ class GibbsFreeEnergy(BaseFitness):
                 for j in range(shortest):
                     atoms_obj[k[j]].number = 200
         return counts
-
 
     def __compare_indices_to_ref(self,indices):
         for i in indices.keys():
@@ -138,6 +136,5 @@ class GibbsFreeEnergy(BaseFitness):
             x = i.split("_")
             if(x[0] == "mu"):
                 env_var[0][x[1]] = j
-        
 
         return list(env_var)

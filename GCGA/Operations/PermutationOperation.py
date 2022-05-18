@@ -13,8 +13,6 @@ class PermutationOperation(OperationsBase):
  
         self.delete_chance = delete_chance
 
-
-
     def mutate(self, a1, a2):
         super().mutate(a1,a2)
 

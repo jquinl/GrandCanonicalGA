@@ -81,7 +81,7 @@ cmds = ["pair_style reaxff",
 lammps = LAMMPSlib(lmpcmds=cmds, log_file='test.log')
 
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(slab,variable_types,variable_range,mutations,chances,fitness_function,starting_population=5,calculator = lammps,steps= 10)
+gcga = GCGA(slab,variable_types,variable_range,mutations,chances,fitness_function,calculator = lammps,steps= 10)
 
 #Calling the run function will initialize the run
 gcga.run()

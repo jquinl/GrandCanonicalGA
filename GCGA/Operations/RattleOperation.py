@@ -16,8 +16,6 @@ class RattleOperation(OperationsBase):
         self.strict = strict
         self.rattle_strength = rattle_strength
     
-
-
     def mutate(self, a1, a2):
         super().mutate(a1,a2)
 
@@ -103,5 +101,3 @@ class RattleOperation(OperationsBase):
 
         at[position].scaled_position = new_pos
         return at
-
-        
