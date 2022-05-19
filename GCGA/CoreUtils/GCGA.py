@@ -4,10 +4,10 @@ from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
-from GCGA.Operations.AddOperation import AddOperation as AD
+"""from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
-from GCGA.Operations.RattleOperation import RattleOperation as RT
+from GCGA.Operations.RattleOperation import RattleOperation as RT"""
 
 import numpy as np
 from ase.io import write, Trajectory
@@ -25,8 +25,8 @@ class GCGA:
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 20,population_size = 20,
-                stoichiometry_weight = 1.0,penalty_strength = 0.0,calculator = EMT(),
+                starting_population = 20,population_size = 5,
+                stoichiometry_weight = 0.0,penalty_strength = 0.0,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
                 ):
@@ -114,7 +114,7 @@ class GCGA:
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,CO):
                 return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
-            if issubclass(isClass,AD):
+            """  if issubclass(isClass,AD):
                 return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,RM):
                 return RM(self.slab,self.atomic_types,self.atomic_ranges)
@@ -122,7 +122,7 @@ class GCGA:
                 return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,RT):
                 return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-
+            """
             raise TypeError("Provided mutation type is not supported",type(isClass))
     
     def __default_instancing_string(self,isClass):   
@@ -130,7 +130,7 @@ class GCGA:
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "cross":
                 return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
-            if isClass == "add":
+            """if isClass == "add":
                 return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "remove":
                 return RM(self.slab,self.atomic_types,self.atomic_ranges)
@@ -138,7 +138,7 @@ class GCGA:
                 return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "rattle":
                 return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-
+            """
             raise TypeError("Provided mutation string is not supported:",isClass)
     
     def __initialize_fitness_function(self,function):
@@ -256,12 +256,12 @@ class GCGA:
             self.trajfile.write(atoms)
 
     def relax(self,atoms):
-
+        print("structure evaluation")
         results = None
         if(isinstance(self.calc,EMT)):
             atoms.set_calculator( self.calc)
-            dyn = BFGS(atoms)
-            dyn.run(steps=100, fmax=0.05)
+            dyn = BFGS(atoms, trajectory=None, logfile=None)
+            dyn.run(fmax=0.05, steps=100)
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
             results = {'energy': E,'forces': F}

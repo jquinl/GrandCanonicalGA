@@ -4,11 +4,11 @@ from GCGA.CoreUtils.GCGA import GCGA
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.OperationsBase import OperationsBase
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
-from GCGA.Operations.AddOperation import AddOperation as AD
+"""from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
-
+"""
 from ase import Atoms
 import numpy as np
 ###########################

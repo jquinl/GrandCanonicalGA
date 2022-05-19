@@ -15,7 +15,10 @@ class CrossOperation(OperationsBase):
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
-    
+    def cross(self,a1,a2):
+        if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
+            raise ValueError('Different cell sizes found for slab and inputed structures')
+        
     def mutate(self, a1, a2):
         super().mutate( a1,a2)
 
@@ -77,10 +80,6 @@ class CrossOperation(OperationsBase):
             var_id = self.get_var_id(atoms)
             if(var_id is None):
                 continue
-            # Passed all the tests if it generates a valid var_id its in the possible combination list
-            if(var_id != allowed_stc1 and var_id != allowed_stc2):
-                if(self.rng.rand() > self.stc_change_chance):
-                    continue
         
             atoms.info['stc']= var_id
             return atoms,2
