@@ -8,13 +8,15 @@ class CrossOperation(OperationsBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
+    random_translation: Applies random translation to both parent structures before mating
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.1,minfrac = None):
+                rng=np.random,stc_change_chance = 0.1,minfrac = None,random_translation = True):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
+        self.random_translation = random_translation
     def cross(self,a1,a2):
         if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
             raise ValueError('Different cell sizes found for slab and inputed structures')
@@ -51,12 +53,13 @@ class CrossOperation(OperationsBase):
             cut_n = np.array([np.cos(phi) * np.sin(theta),
                                 np.sin(phi) * np.sin(theta), np.cos(theta)])
            
-            # Randomly translate parent structures
-            for a_copy, a in zip([a1_copy, a2_copy], [a1, a2]):
-                a_copy.set_positions(a.get_positions())
-                for i in range(len(cell)):
-                    a_copy.positions += self.rng.rand() * cell[i]
-                a_copy.wrap()
+            if(self.random_translation):
+                # Randomly translate parent structures
+                for a_copy, a in zip([a1_copy, a2_copy], [a1, a2]):
+                    a_copy.set_positions(a.get_positions())
+                    for i in range(len(cell)):
+                        a_copy.positions += self.rng.rand() * cell[i]
+                    a_copy.wrap()
             
             # Generate the cutting point in scaled coordinates
             cosp1 = np.average(a1_copy.get_scaled_positions(), axis=0)
