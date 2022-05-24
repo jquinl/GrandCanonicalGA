@@ -21,12 +21,13 @@ from ase.calculators.lammpslib import LAMMPSlib
 
 
 class GCGA:
-    
+
+    #similarity_penalty is a Prototype, use with caution, for runs with high number of steps impacts performance significantly"
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 mutation_chances,fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 20,population_size = 5,
-                stoichiometry_weight = 0.0,penalty_strength = 0.0,calculator = EMT(),
+                starting_population = 10,population_size = 5,
+                stoichiometry_weight = True,similarity_penalty = False,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
                 ):
@@ -56,7 +57,11 @@ class GCGA:
         self.starting_population = starting_population
         self.population = population_size
         self.wt = stoichiometry_weight
-        self.pts = penalty_strength
+        self.pts = similarity_penalty
+        if(not stoichiometry_weight and similarity_penalty):
+            print("Similarity penalty is marked true but stoichiometry weight is not. Currently only similarity penalty is not supported so sotichiometry weight will be marked true")
+            self.wt = True
+            self.pts = True
 
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator,RCG)
         self.crossing_operator =self.__initialize_crossing(crossing_operator,CO)
@@ -181,9 +186,7 @@ class GCGA:
             db.update_to_relaxed(atoms)
 
 
-        #--------------------------------------Find better stoich to srtart eval----------------------------
 
-        #Overall fitness value
         steps = self.steps
         maxtries = self.maxtries
 
@@ -193,7 +196,7 @@ class GCGA:
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
 
-            atomslist = db.get_better_candidates_weighted_penalized(n=self.population,wt_strength =self.wt,penalty_strength=self.pts )
+            atomslist = db.get_better_candidates(n=self.population,weighted=self.wt,structure_similarity=self.pts)
             ranges = len(atomslist)
             #Choose two of the most stable structures to pair
             cand1 = np.random.randint(ranges)
@@ -247,7 +250,7 @@ class GCGA:
                     
                     db.update_to_relaxed(atoms)
 
-        atomslist = db.get_better_candidates(max=True)
+        atomslist = db.get_better_candidates_raw(max_num=True)
 
         write("sorted_" + self.filename,atomslist)
 

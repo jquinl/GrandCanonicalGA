@@ -76,7 +76,7 @@ mutations = [crossing]#,candidateGenerator]#AD,removing,"permute",rattling]
 chances = [1.0]
 
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(slab,variable_types,variable_range,mutations,chances,simple_fitness_function,calculator = EMT(),population_size=5)
+gcga = GCGA(slab,variable_types,variable_range,mutations,chances,simple_fitness_function,calculator = EMT(),starting_population = 5,population_size=5,steps=100,similarity_penalty=True)
 
 #Calling the run function will initialize the run
 gcga.run()
