@@ -30,7 +30,7 @@ class DataBaseInterface:
             raise Exception("No dbid Parameter found in fetched atoms")
     
         
-    def update_to_relaxed(self, atoms):
+    def update_to_relaxed(self, atoms,similarity=False):
         try:
             atoms.info['key_value_pairs']['dbid']
         except:
@@ -43,8 +43,13 @@ class DataBaseInterface:
             atoms.info['key_value_pairs']['raw_score']
         except KeyError:
            raise Exception("Relaxed candidate does not have raw_score")
+        if(similarity):
+            self.db.update(atoms.info['key_value_pairs']['dbid'],atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],
+             similarity= self.__get_similarity(atoms),parent_penalty = 0)
+        else:
+            self.db.update(atoms.info['key_value_pairs']['dbid'],atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],
+             similarity= 0,parent_penalty = 0)
 
-        self.db.update(atoms.info['key_value_pairs']['dbid'],atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],parent_penalty = 0)
     def update_penalization(self,atoms):
         try:
             atoms.info['key_value_pairs']['dbid']
@@ -52,6 +57,14 @@ class DataBaseInterface:
             raise Exception("No atoms object was not included in database before")
         dbid = atoms.info['key_value_pairs']['dbid']
         self.db.update(dbid,parent_penalty = atoms.info['key_value_pairs']['parent_penalty'] + 1)
+    
+    def update_similarity(self,atoms):
+        try:
+            atoms.info['key_value_pairs']['dbid']
+        except:
+            raise Exception("No atoms object was not included in database before")
+        dbid = atoms.info['key_value_pairs']['dbid']
+        self.db.update(dbid,similarity = atoms.info['key_value_pairs']['similarity'] + 1)
         
     "THIS NEEDS FIXING"
     def get_atoms_from_id(self,dbid):
@@ -113,23 +126,28 @@ class DataBaseInterface:
                 at.info['key_value_pairs']['parent_penalty']
             except KeyError:
                 raise Exception("No var_stc parameter found in fetched atoms")
+            try:
+                at.info['key_value_pairs']['similarity']
+            except KeyError:
+                raise Exception("No similarity parameter found in fetched atoms")
             atoms.append(at)
 
         return list(atoms)
 
-    def __get_similar(self,atom,atoms):
+    def __get_similarity(self,atom):
         comp = InteratomicDistanceComparator(n_top=len(atom), pair_cor_cum_diff=0.015,
                  pair_cor_max=0.7, dE=0.5, mic=True)
+        atoms = self.get_relaxed_candidates()
         hits = 0
         for a in atoms:
             if(len(atom) == len(a)):
                 if(comp.looks_like(a,atom)):
+                    self.update_similarity(a)
                     hits +=1
         return hits
 
     def __times_paired(self,stc):
         atoms = []
-        print(self.get_ids_from_stc(stc))
         for i in self.get_ids_from_stc(stc):
             at = self.get_atoms_from_id(i)
             try:
@@ -147,33 +165,6 @@ class DataBaseInterface:
             atoms.append(at)
         
         return len(list(atoms))
-
-    def get_relaxed_candidates_similar(self):
-        "Prototype, use with caution, for runs with high number of steps impacts performance significantly"
-        atoms = []
-        for i in self.get_all_relaxed_ids():
-            at = self.get_atoms_from_id(i)
-            try:
-                at.info['key_value_pairs']['dbid']
-            except KeyError:
-                raise Exception("No dbid parameter found in fetched atoms")
-            try:
-                at.info['key_value_pairs']['var_stc']
-            except KeyError:
-                raise Exception("No var_stc parameter found in fetched atoms")
-            try:
-                at.info['key_value_pairs']['raw_score']
-            except KeyError:
-                raise Exception("No var_stc parameter found in fetched atoms")
-            try:
-                at.info['key_value_pairs']['parent_penalty']
-            except KeyError:
-                raise Exception("No var_stc parameter found in fetched atoms")
-            atoms.append(at)
-
-        for a in atoms:
-            a.info['key_value_pairs']['similar'] = self.__get_similar(a,atoms)
-        return list(atoms)
     
     def get_better_candidates_raw(self,n=1,max_num=False):
 
@@ -203,10 +194,9 @@ class DataBaseInterface:
         atoms = []
         if(structure_similarity and not weighted):
             weighted = True
-        if(structure_similarity):
-            atoms = self.get_relaxed_candidates_similar()
-        else:
-            atoms = self.get_relaxed_candidates()
+        
+        
+        atoms = self.get_relaxed_candidates()
 
 
         "How many times the same stoichiometry appears in the run"
@@ -221,7 +211,7 @@ class DataBaseInterface:
             atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
              1.0/sqrt(1.0 + self.__times_paired(x.info['key_value_pairs']['var_stc'])) *
              1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
-             1.0/sqrt(1.0 + x.info['key_value_pairs']['similar']),reverse = True)
+             1.0/sqrt(1.0 + x.info['key_value_pairs']['similarity']),reverse = True)
         elif(weighted and not structure_similarity):
             atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
              1.0/sqrt(1.0+self.__times_paired(x.info['key_value_pairs']['var_stc'])) *

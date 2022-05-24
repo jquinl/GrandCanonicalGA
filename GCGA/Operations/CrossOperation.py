@@ -11,7 +11,7 @@ class CrossOperation(OperationsBase):
     random_translation: Applies random translation to both parent structures before mating
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.1,minfrac = None,random_translation =True):
+                rng=np.random,stc_change_chance = 0.1,minfrac = None,random_translation =False):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
