@@ -1,3 +1,5 @@
+from configparser import RawConfigParser
+import random
 import numpy as np
 from ase import Atoms
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
@@ -30,10 +32,10 @@ class RandomCandidateGenerator(OperationsBase):
     """
 
     def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                    random_generation_box_size = 0.8,rng=np.random):
+                    random_generation_box_size = 0.8,rng=np.random,test_too_far=True):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
-
+        self.test_too_far = test_too_far
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
         if(number > len(self.combination_matrix)):
             raise Exception("Provided number higher than possible combinations")
@@ -63,7 +65,7 @@ class RandomCandidateGenerator(OperationsBase):
         
         atoms_numbers  = atoms.numbers
         sg = StartGenerator(self.slab, atoms_numbers, blmin,
-                    box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]])
+                    box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]],test_too_far=self.test_too_far)
         return_atoms = sg.get_new_candidate()
         var_id = self.get_var_id(return_atoms)
         if(var_id is not None):
@@ -112,18 +114,33 @@ class RandomCandidateGenerator(OperationsBase):
         if(len(pos) == 0):
             v1 = cell[0, :] * random_generation_box_size
             v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :]
-            v3[2] = 3.
+            v3 = cell[2, :] * random_generation_box_size
             p0 = np.array([0,0,0])
         else:
             p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
             v1 = cell[0, :] * random_generation_box_size
             v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :]
-            v3[2] = 3.
+            v3 = cell[2, :] * random_generation_box_size
+
         return p0,v1,v2,v3
-    
-    
+    ############Work In progress##################
+    def __generate(self,slab, atom_numbers, blmin):
+        cand = slab.copy()
+        random.shuffle(atom_numbers)
+        for i in atom_numbers:
+            maxtries = 100
+            tries = 0
+            done = False
+            while tries< maxtries and not done:
+                done = True
+
+        return
+    def __check_overlap(self,atom1,atom2,dist):
+        return dist*dist < ((atom1.position[0]-atom2.postion[0]) * (atom1.position[0]-atom2.postion[0]) +
+                            (atom1.position[1]-atom2.postion[1]) * (atom1.position[1]-atom2.postion[1]) +
+                            (atom1.position[2]-atom2.postion[2]) * (atom1.position[2]-atom2.postion[2]))
+    def __random_position_in_box(self):
+        return  
         
 
 

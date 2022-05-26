@@ -53,7 +53,6 @@ class GCGA:
             else:
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
         
-
         self.starting_population = starting_population
         self.population = population_size
         self.wt = stoichiometry_weight
