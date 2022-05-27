@@ -123,25 +123,45 @@ class RandomCandidateGenerator(OperationsBase):
             v3 = cell[2, :] * random_generation_box_size
 
         return p0,v1,v2,v3
-    ############Work In progress##################
+    ############Work In Progress##################
     def __generate(self,slab, atom_numbers, blmin):
         cand = slab.copy()
+        
         random.shuffle(atom_numbers)
         for i in atom_numbers:
             maxtries = 100
             tries = 0
             done = False
             while tries< maxtries and not done:
+                self.__check_overlap()
                 done = True
 
         return
+    
     def __check_overlap(self,atom1,atom2,dist):
         return dist*dist < ((atom1.position[0]-atom2.postion[0]) * (atom1.position[0]-atom2.postion[0]) +
                             (atom1.position[1]-atom2.postion[1]) * (atom1.position[1]-atom2.postion[1]) +
                             (atom1.position[2]-atom2.postion[2]) * (atom1.position[2]-atom2.postion[2]))
     def __random_position_in_box(self):
-        return  
         
+        return  
+    def __random_position_from_atom(self,atom,distance):
+        
+        new_vec = self.rng.normal(size=3)
+        while(new_vec == np.array([0.0,0.0,0.0])):
+            new_vec = self.rng.normal(size=3)
+
+        norm = np.linalg.norm(new_vec)
+        norm *= self.rng.uniform(distance,distance*2.0)
+
+        pos = atom.position + norm
+
+        pos[0] = max(min(self.p0[0]+self.v1[0]+self.v2[0]+self.v3[0], pos[0]),self.p0[0])
+        pos[1] = max(min(self.p0[1]+self.v1[1]+self.v2[1]+self.v3[1], pos[1]),self.p0[1])
+        pos[2] = max(min(self.p0[2]+self.v1[2]+self.v2[2]+self.v3[2], pos[2]),self.p0[2])
+
+        return pos
+
 
 
     

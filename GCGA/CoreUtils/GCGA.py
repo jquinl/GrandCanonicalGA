@@ -185,7 +185,6 @@ class GCGA:
             db.update_to_relaxed(atoms)
 
 
-
         steps = self.steps
         maxtries = self.maxtries
 
