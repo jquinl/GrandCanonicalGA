@@ -54,12 +54,12 @@ slab = Atoms(cell=[a,a,a],
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[19,20]]
+variable_range = [[10],[28]]
 
 #Indicate mutations to be performed during the run. They can be passes as an instantiated class, as a type or as a string,
 # If passed as type or string, they will be instantiated with default values. A more precisse fine tuning of the run requeres the classes to be preinstantiated when
 #  passed into rhe GCGA object"
-candidateGenerator = RCG(slab,variable_types,variable_range)
+candidateGenerator = RCG(slab,variable_types,variable_range,max_bond_lenght_multi=2.0)
 crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
 """adding = AD(slab,variable_types,variable_range)
 removing = RM(slab,variable_types,variable_range)
@@ -76,7 +76,10 @@ mutations = [crossing]#,candidateGenerator]#AD,removing,"permute",rattling]
 chances = [1.0]
 
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(slab,variable_types,variable_range,mutations,chances,simple_fitness_function,calculator = EMT(),starting_population = 10,population_size=5,steps=100,similarity_penalty=True)
+gcga = GCGA(slab,variable_types,variable_range,mutations,chances,
+simple_fitness_function,calculator = EMT(),
+initial_structure_generator = candidateGenerator,
+starting_population = 10,population_size=5,steps=100,similarity_penalty=True)
 
 #Calling the run function will initialize the run
 gcga.run()

@@ -30,12 +30,17 @@ class RandomCandidateGenerator(OperationsBase):
         - 1.0 to use the entirety of the unoccupied cell in the slab atoms object
         - default 0.8
     """
+    @classmethod
+    def rand_generator(cls):
+        pass
 
     def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                     random_generation_box_size = 0.8,rng=np.random,max_bond_lenght_multi=4.0):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
         self.max_blen = max_bond_lenght_multi
+        print(self.max_blen)
+
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
         if(number > len(self.combination_matrix)):
             raise Exception("Provided number higher than possible combinations")
@@ -195,7 +200,7 @@ class RandomCandidateGenerator(OperationsBase):
         unif = self.rng.uniform(distance,distance*self.max_blen)
         norm *= unif
         print(unif)
-        print(distance)
+        print("{} {}".format(distance,distance*self.max_blen))
         pos = atom.position + norm
         pos[0] = max(min(self.p0[0]+self.v1[0]+self.v2[0]+self.v3[0], pos[0]),self.p0[0])
         pos[1] = max(min(self.p0[1]+self.v1[1]+self.v2[1]+self.v3[1], pos[1]),self.p0[1])

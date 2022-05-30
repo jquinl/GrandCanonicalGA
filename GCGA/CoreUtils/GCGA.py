@@ -62,7 +62,7 @@ class GCGA:
             self.wt = True
             self.pts = True
 
-        self.initial_structure_generator = self.__initialize_generator(initial_structure_generator,RCG)
+        self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
         self.crossing_operator =self.__initialize_crossing(crossing_operator,CO)
 
         self.steps = steps
@@ -75,10 +75,11 @@ class GCGA:
         else:
             raise TypeError ("Unssupported Crossing operator")
 
-    def __initialize_generator(self,gen,gtype)-> object:
-        if issubclass(gen,gtype):
-            return self.__mutation_to_instance(gen)
-        else:
+    def __initialize_generator(self,gen)-> object:
+        try:
+            gen.rand_generator()
+            return gen
+        except:
             raise TypeError ("Unssupported Random structure generator")
 
     def __initialize_mutations(self,mutations,mutation_chance):
