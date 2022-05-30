@@ -101,6 +101,7 @@ class OperationsBase(ABC):
                     advancement = int(np.prod(lengths_array[i+1:len(self.variable_range)]))
                     pos = int(x / advancement) % len(self.variable_range[i])
                     combiantion_matrix[x,i]=self.variable_range[i][pos]
+                print(combiantion_matrix)
             return combiantion_matrix
         except:
             raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
@@ -148,3 +149,12 @@ class OperationsBase(ABC):
 
         return closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
+
+    def sort_atoms_by_type(self,atoms):
+        at = Atoms()
+        for i in self.variable_types:
+            for k in i:
+                for j in atoms:
+                    if(k.symbol == j.symbol):
+                        at.extend(j)
+        return at

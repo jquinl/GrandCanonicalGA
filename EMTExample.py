@@ -54,13 +54,13 @@ slab = Atoms(cell=[a,a,a],
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[2]]
+variable_range = [[1],[19,20]]
 
 #Indicate mutations to be performed during the run. They can be passes as an instantiated class, as a type or as a string,
 # If passed as type or string, they will be instantiated with default values. A more precisse fine tuning of the run requeres the classes to be preinstantiated when
 #  passed into rhe GCGA object"
 candidateGenerator = RCG(slab,variable_types,variable_range)
-crossing = CO(slab,variable_types,variable_range,minfrac = 0.2,test_too_far = False)
+crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
 """adding = AD(slab,variable_types,variable_range)
 removing = RM(slab,variable_types,variable_range)
 permutating = PM(slab,variable_types,variable_range)

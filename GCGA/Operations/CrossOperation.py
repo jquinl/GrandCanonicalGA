@@ -140,3 +140,4 @@ class CrossOperation(OperationsBase):
                 raise ValueError("Specified minfrac value not a float")
         else:
             return None
+  

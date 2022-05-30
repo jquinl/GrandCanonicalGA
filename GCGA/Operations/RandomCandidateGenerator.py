@@ -1,9 +1,9 @@
-from configparser import RawConfigParser
+from cmath import sqrt
+import copy
 import random
 import numpy as np
 from ase import Atoms
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
-from ase.ga.startgenerator import StartGenerator
 
 from .OperationsBase import OperationsBase
 class RandomCandidateGenerator(OperationsBase):
@@ -32,10 +32,10 @@ class RandomCandidateGenerator(OperationsBase):
     """
 
     def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                    random_generation_box_size = 0.8,rng=np.random,test_too_far=True):
+                    random_generation_box_size = 0.8,rng=np.random,max_bond_lenght_multi=4.0):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
-        self.test_too_far = test_too_far
+        self.max_blen = max_bond_lenght_multi
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
         if(number > len(self.combination_matrix)):
             raise Exception("Provided number higher than possible combinations")
@@ -64,9 +64,9 @@ class RandomCandidateGenerator(OperationsBase):
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
         
         atoms_numbers  = atoms.numbers
-        sg = StartGenerator(self.slab, atoms_numbers, blmin,
-                    box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]],test_too_far=self.test_too_far)
-        return_atoms = sg.get_new_candidate()
+        #StartGenerator(self.slab, atoms_numbers, blmin,
+        #            box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]],test_too_far=self.test_too_far)
+        return_atoms = self.__generate(self.slab,atom_numbers=atoms_numbers,blmin=blmin)
         var_id = self.get_var_id(return_atoms)
         if(var_id is not None):
             return_atoms.info['stc']= var_id
@@ -121,48 +121,90 @@ class RandomCandidateGenerator(OperationsBase):
             v1 = cell[0, :] * random_generation_box_size
             v2 = cell[1, :] * random_generation_box_size
             v3 = cell[2, :] * random_generation_box_size
+            v3 = v3-p0
 
         return p0,v1,v2,v3
     ############Work In Progress##################
     def __generate(self,slab, atom_numbers, blmin):
         cand = slab.copy()
-        
-        random.shuffle(atom_numbers)
-        for i in atom_numbers:
-            maxtries = 100
+        nums = copy.deepcopy(atom_numbers)
+        random.shuffle(nums)
+        if(len(atom_numbers) == 0):
+            raise ValueError("Empty atom_numbers arrays")
+
+
+        maxtries = 100
+        if(len(cand)==0):
+            newAtoms = Atoms(numbers = [nums[-1]])
+            nums = nums[:-1]
             tries = 0
             done = False
             while tries< maxtries and not done:
-                self.__check_overlap()
-                done = True
+                tries +=1
+                for at in newAtoms:
+                    at.position = self.__random_position_in_box()
+                cand.extend(at)
+                cand.wrap()
+                if(len(cand)>0):
+                    done = True
+            if not done:
+                return None
 
-        return
-    
+        for i in nums:
+            tries = 0
+            done = False
+            newAtoms = Atoms(numbers = [i])
+            while tries< maxtries and not done:
+                for at in newAtoms:
+                    candidate = random.choice(range(len(cand)))
+                    at.position = self.__random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,at.number)])
+                
+                if(not self.__overlaps(cand,newAtoms,blmin)):
+                    cand.extend(newAtoms)
+                    done = True
+                tries +=1
+            if(not done):
+                return None
+        final_atoms = slab.copy()
+        final_atoms.extend(self.sort_atoms_by_type(cand[len(slab):]))
+        return final_atoms
+
+    def __overlaps(self,atoms,atomstoadd,blmin):
+        for at in atoms:
+            for nat in atomstoadd:
+                if(not self.__check_overlap(at,nat,blmin[(at.number,nat.number)])):
+                    return True
+        return False 
+
     def __check_overlap(self,atom1,atom2,dist):
-        return dist*dist < ((atom1.position[0]-atom2.postion[0]) * (atom1.position[0]-atom2.postion[0]) +
-                            (atom1.position[1]-atom2.postion[1]) * (atom1.position[1]-atom2.postion[1]) +
-                            (atom1.position[2]-atom2.postion[2]) * (atom1.position[2]-atom2.postion[2]))
+        return dist*dist < ((atom1.position[0]-atom2.position[0]) * (atom1.position[0]-atom2.position[0]) +
+                            (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +
+                            (atom1.position[2]-atom2.position[2]) * (atom1.position[2]-atom2.position[2]))
+
     def __random_position_in_box(self):
-        
-        return  
+        return self.p0 + (self.rng.random() * self.v1 + self.rng.random() * self.v2 + self.rng.random() * self.v3)
+
     def __random_position_from_atom(self,atom,distance):
         
         new_vec = self.rng.normal(size=3)
-        while(new_vec == np.array([0.0,0.0,0.0])):
+        while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
             new_vec = self.rng.normal(size=3)
 
-        norm = np.linalg.norm(new_vec)
-        norm *= self.rng.uniform(distance,distance*2.0)
+        norm = self.__normalize(new_vec)
 
+        unif = self.rng.uniform(distance,distance*self.max_blen)
+        norm *= unif
+        print(unif)
+        print(distance)
         pos = atom.position + norm
-
         pos[0] = max(min(self.p0[0]+self.v1[0]+self.v2[0]+self.v3[0], pos[0]),self.p0[0])
         pos[1] = max(min(self.p0[1]+self.v1[1]+self.v2[1]+self.v3[1], pos[1]),self.p0[1])
         pos[2] = max(min(self.p0[2]+self.v1[2]+self.v2[2]+self.v3[2], pos[2]),self.p0[2])
-
+        
         return pos
 
-
+    def __normalize(self,vector):
+        return vector / np.linalg.norm(vector)
 
     
     
