@@ -10,6 +10,8 @@ import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
+from ase.ga.standard_comparators import InteratomicDistanceComparator
+
 
 class OperationsBase(ABC):
     """
@@ -158,3 +160,10 @@ class OperationsBase(ABC):
                     if(k.symbol == j.symbol):
                         at.extend(j)
         return at
+
+    def is_structure_equal(self,atoms1,atoms2):
+        if(len(atoms1) != len(atoms2)): return False
+        
+        comp = InteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
+                pair_cor_max=0.7, dE=0.5, mic=True)
+        return comp.looks_like(atoms1,atoms2)

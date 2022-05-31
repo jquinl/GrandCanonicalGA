@@ -80,6 +80,11 @@ class CrossOperation(OperationsBase):
                 continue
 
             atoms.wrap()
+
+            if(self.is_structure_equal(a1,atoms) or self.is_structure_equal(a1,atoms)):
+                continue
+
+
             var_id = self.get_var_id(atoms)
             if(var_id is None):
                 continue
