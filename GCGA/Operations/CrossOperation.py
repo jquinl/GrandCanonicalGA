@@ -73,8 +73,7 @@ class CrossOperation(OperationsBase):
                 continue
 
             atoms  = self.slab.copy()
-
-            atoms.extend(child)
+            atoms.extend(self.sort_atoms_by_type(child))
 
             if atoms_too_close(atoms, self.blmin):
                 continue

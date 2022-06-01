@@ -5,6 +5,7 @@ import numpy as np
 from ase import Atoms
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 
+
 from .OperationsBase import OperationsBase
 class RandomCandidateGenerator(OperationsBase):
     """
