@@ -165,6 +165,6 @@ class OperationsBase(ABC):
         if(len(atoms1) != len(atoms2)): return False
         
         comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
-                pair_cor_max=0.7, dE=0.5, mic=True)
+                pair_cor_max=0.7, mic=True)
         return comp.looks_like(atoms1,atoms2)
 

@@ -80,7 +80,7 @@ class CrossOperation(OperationsBase):
 
             atoms.wrap()
 
-            if(self.is_structure_equal(a1,atoms) or self.is_structure_equal(a1,atoms)):
+            if(self.is_structure_equal(a1,atoms) or self.is_structure_equal(a2,atoms)):
                 continue
 
 

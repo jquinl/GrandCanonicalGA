@@ -166,10 +166,9 @@ class NonEnergyInteratomicDistanceComparator:
         Modified to not check for the energy of structures
     """
     def __init__(self, n_top=None, pair_cor_cum_diff=0.015,
-                 pair_cor_max=0.7, dE=0.02, mic=False):
+                 pair_cor_max=0.7, mic=False):
         self.pair_cor_cum_diff = pair_cor_cum_diff
         self.pair_cor_max = pair_cor_max
-        self.dE = dE
         self.n_top = n_top or 0
         self.mic = mic
 
@@ -197,7 +196,8 @@ class NonEnergyInteratomicDistanceComparator:
             cum_diff = 0.
             c1 = p1[n]
             c2 = p2[n]
-            assert len(c1) == len(c2)
+
+            if( len(c1) != len(c2)): return (self.pair_cor_cum_diff + 1.0,self.pair_cor_max +1)
             if len(c1) == 0:
                 continue
             t_size = np.sum(c1)
@@ -224,3 +224,5 @@ def get_sorted_dist_list(atoms, mic=False):
         d.sort()
         pair_cor[n] = np.array(d)
     return pair_cor
+
+     
