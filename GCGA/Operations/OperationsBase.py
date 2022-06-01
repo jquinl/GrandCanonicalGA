@@ -6,11 +6,12 @@ from typing import List, Dict, Any
 import hashlib
 import json
 from ..CoreUtils.NumpyArrayEncoder import NumpyArrayEncoder
+from ..CoreUtils.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
-from ase.ga.standard_comparators import InteratomicDistanceComparator
+
 
 
 class OperationsBase(ABC):
@@ -103,7 +104,6 @@ class OperationsBase(ABC):
                     advancement = int(np.prod(lengths_array[i+1:len(self.variable_range)]))
                     pos = int(x / advancement) % len(self.variable_range[i])
                     combiantion_matrix[x,i]=self.variable_range[i][pos]
-                print(combiantion_matrix)
             return combiantion_matrix
         except:
             raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
@@ -164,6 +164,7 @@ class OperationsBase(ABC):
     def is_structure_equal(self,atoms1,atoms2):
         if(len(atoms1) != len(atoms2)): return False
         
-        comp = InteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
+        comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
                 pair_cor_max=0.7, dE=0.5, mic=True)
         return comp.looks_like(atoms1,atoms2)
+

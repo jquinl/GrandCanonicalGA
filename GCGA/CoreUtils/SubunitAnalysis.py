@@ -32,17 +32,13 @@ class SubunitFinder():
 
         
         clusters = list(set(frozenset(item) for item in clusters))
-        print(clusters)
         atypes = ["H","He","Ni","Pt","Au","Xe","C"]
         counter = 0
         for i in clusters:
-            print(i)
             for j in cls.__subdivide_clusters(i,atoms,subunit,dmax=dmax,scale=scale):
-                print(j)
                 for k in j:
                     atoms[k].symbol = atypes[counter]
                 counter+=1
-        print(atoms)
         return atoms.copy()
     @classmethod
     def __traverse_tree(cls,atoms,dictionary,start_index,symbols):
@@ -95,7 +91,6 @@ class SubunitFinder():
         for k in full_combinations:
             test_bonds = []
             test_bonds = cls.__bond_type_length(k,atoms)
-            print(test_bonds)
             test_bonds.sort(key=lambda x: x[2])
             if len(test_bonds) != len(subunit_bonds):
                 continue
@@ -152,3 +147,80 @@ class SubunitFinder():
                     pairs.append([i,j])
                     total_bond_length += atoms.get_distance(i,j)
         return total_bond_length
+class NonEnergyInteratomicDistanceComparator:
+
+    """ An implementation of the comparison criteria described in
+          L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
+
+        Parameters:
+
+        n_top: The number of atoms being optimized by the GA.
+            Default 0 - meaning all atoms.
+
+        pair_cor_cum_diff: The limit in eq. 2 of the letter.
+        pair_cor_max: The limit in eq. 3 of the letter
+        dE: The limit of eq. 1 of the letter
+        mic: Determines if distances are calculated
+        using the minimum image convention
+
+        Modified to not check for the energy of structures
+    """
+    def __init__(self, n_top=None, pair_cor_cum_diff=0.015,
+                 pair_cor_max=0.7, dE=0.02, mic=False):
+        self.pair_cor_cum_diff = pair_cor_cum_diff
+        self.pair_cor_max = pair_cor_max
+        self.dE = dE
+        self.n_top = n_top or 0
+        self.mic = mic
+
+    def looks_like(self, a1, a2):
+        """ Return if structure a1 or a2 are similar or not. """
+        if len(a1) != len(a2):
+            raise Exception('The two configurations are not the same size')
+
+        # then we check the structure
+        a1top = a1[-self.n_top:]
+        a2top = a2[-self.n_top:]
+        cum_diff, max_diff = self.__compare_structure__(a1top, a2top)
+
+        return (cum_diff < self.pair_cor_cum_diff
+                and max_diff < self.pair_cor_max)
+
+    def __compare_structure__(self, a1, a2):
+        """ Private method for calculating the structural difference. """
+        p1 = get_sorted_dist_list(a1, mic=self.mic)
+        p2 = get_sorted_dist_list(a2, mic=self.mic)
+        numbers = a1.numbers
+        total_cum_diff = 0.
+        max_diff = 0
+        for n in p1.keys():
+            cum_diff = 0.
+            c1 = p1[n]
+            c2 = p2[n]
+            assert len(c1) == len(c2)
+            if len(c1) == 0:
+                continue
+            t_size = np.sum(c1)
+            d = np.abs(c1 - c2)
+            cum_diff = np.sum(d)
+            max_diff = np.max(d)
+            ntype = float(sum([i == n for i in numbers]))
+            total_cum_diff += cum_diff / t_size * ntype / float(len(numbers))
+        return (total_cum_diff, max_diff)
+
+
+def get_sorted_dist_list(atoms, mic=False):
+    """ Utility method used to calculate the sorted distance list
+        describing the cluster in atoms. """
+    numbers = atoms.numbers
+    unique_types = set(numbers)
+    pair_cor = dict()
+    for n in unique_types:
+        i_un = [i for i in range(len(atoms)) if atoms[i].number == n]
+        d = []
+        for i, n1 in enumerate(i_un):
+            for n2 in i_un[i + 1:]:
+                d.append(atoms.get_distance(n1, n2, mic))
+        d.sort()
+        pair_cor[n] = np.array(d)
+    return pair_cor

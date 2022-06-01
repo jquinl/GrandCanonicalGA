@@ -145,11 +145,7 @@ class DataBaseInterface:
                     self.update_similarity(a)
                     hits +=1
         return hits
-    def __is_structure_equal(self,atoms1,atoms2):
-        if(len(atoms1) != len(atoms2)): return False
-        comp = InteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
-                 pair_cor_max=0.7, dE=0.5, mic=True)
-        return comp.looks_like(atoms1,atoms2)
+
 
     def __times_paired(self,stc):
         atoms = []

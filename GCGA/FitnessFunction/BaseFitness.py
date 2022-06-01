@@ -73,7 +73,6 @@ class GibbsFreeEnergy(BaseFitness):
         atoms_obj = atoms.copy()
         ats = [Atoms(i) for i in self.references.keys()]
         ats.sort(reverse=True,key= lambda x: len(x))
-        print(ats)
         counts = {}
         for i in range(len(ats)):
             mat = []
