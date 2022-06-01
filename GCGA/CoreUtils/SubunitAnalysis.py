@@ -1,3 +1,4 @@
+from curses import pair_content
 from ase.build import connected_indices as con_ind
 from itertools import combinations
 
@@ -180,49 +181,71 @@ class NonEnergyInteratomicDistanceComparator:
         # then we check the structure
         a1top = a1[-self.n_top:]
         a2top = a2[-self.n_top:]
-        cum_diff, max_diff = self.__compare_structure__(a1top, a2top)
+        return self.__compare_structure(a1top, a2top)
 
-        return (cum_diff < self.pair_cor_cum_diff
-                and max_diff < self.pair_cor_max)
 
-    def __compare_structure__(self, a1, a2):
-        """ Private method for calculating the structural difference. """
-        p1 = get_sorted_dist_list(a1, mic=self.mic)
-        p2 = get_sorted_dist_list(a2, mic=self.mic)
-        numbers = a1.numbers
+    def __compare_structure(self,a1,a2): 
+        p1 = get_sorted_d_list(a1, mic=self.mic)
+        p2 = get_sorted_d_list(a2, mic=self.mic)
+
+        p1keys = [i for i in p1.keys()]
+        p2keys = [i for i in p2.keys()]
+
+        p1keys.sort()
+        p2keys.sort()
+        if(len(p1keys) != len(p2keys)): return False
+        for a,b in zip(p1keys,p2keys):
+            if(a != b): return False
+
         total_cum_diff = 0.
         max_diff = 0
-        for n in p1.keys():
-            cum_diff = 0.
-            c1 = p1[n]
-            c2 = p2[n]
-
-            if( len(c1) != len(c2)): return (self.pair_cor_cum_diff + 1.0,self.pair_cor_max +1)
-            if len(c1) == 0:
-                continue
-            t_size = np.sum(c1)
+        all_bonds=[]
+        for i in p1.values():
+            for j in i:
+                all_bonds.append(j)
+        nsize = len(all_bonds)
+        for i in p1.keys():
+            c1 = p1[i]
+            c2 = p2[i]
+            if(len(c2)!=len(c1)): return False
             d = np.abs(c1 - c2)
+            t_size = np.sum(c1)
             cum_diff = np.sum(d)
             max_diff = np.max(d)
-            ntype = float(sum([i == n for i in numbers]))
-            total_cum_diff += cum_diff / t_size * ntype / float(len(numbers))
-        return (total_cum_diff, max_diff)
+
+            total_cum_diff += cum_diff / t_size * len(c1) / nsize
+        return (cum_diff < self.pair_cor_cum_diff
+                    and max_diff < self.pair_cor_max)
 
 
-def get_sorted_dist_list(atoms, mic=False):
-    """ Utility method used to calculate the sorted distance list
-        describing the cluster in atoms. """
-    numbers = atoms.numbers
-    unique_types = set(numbers)
-    pair_cor = dict()
-    for n in unique_types:
-        i_un = [i for i in range(len(atoms)) if atoms[i].number == n]
-        d = []
-        for i, n1 in enumerate(i_un):
-            for n2 in i_un[i + 1:]:
-                d.append(atoms.get_distance(n1, n2, mic))
-        d.sort()
-        pair_cor[n] = np.array(d)
-    return pair_cor
+def get_sorted_d_list(atoms,mic=False):
+    
+    unique_bonds = dict()
+    unique_comb = dict()
+    for i in atoms:
+        for j in atoms:
+            if(i.index != j.index and (j.index,i.index) not in unique_bonds.keys()):
+               unique_bonds[(i.index,j.index)] = atoms.get_distance(i.index, j.index, mic)
+               unique_comb[(i.symbol,j.symbol)] = 0.0
+    bond_lengths = []
+
+    for i,j in unique_bonds.items():
+        bond_lengths.append([atoms[i[0]].symbol,atoms[i[1]].symbol,j])
+
+    sorted_list= dict()
+    for i in unique_comb.keys():
+        bonds=[]
+        for j in bond_lengths:
+            if((j[0],j[1]) == i or (j[1],j[0]) == i):
+                bonds.append(j[2])
+        bonds.sort()
+        sorted_list[i] = np.array(bonds)
+
+
+    return sorted_list
+
+    
+        
+                
 
      
