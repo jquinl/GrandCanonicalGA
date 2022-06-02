@@ -3,8 +3,8 @@ import numpy as np
 from ase import Atoms
 from ase.ga.utilities import atoms_too_close
 
-from .OperationsBase import OperationsBase
-class CrossOperation(OperationsBase):
+from .CrossBase import CrossBase
+class CrossOperation(CrossBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
@@ -18,23 +18,10 @@ class CrossOperation(OperationsBase):
         self.stc_change_chance = stc_change_chance
         self.random_translation = random_translation
     
-    @classmethod
-    def cross_class(cls):
-        pass
-    def cross_instance(self):
-        pass
-
-    def cross(self,a1,a2):
-        if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
-            raise ValueError('Different cell sizes found for slab and inputed structures')
-    
-    def mutate(self, a1, a2):
-        super().mutate( a1,a2)
-
+ 
+    def cross(self, a1, a2):
+        super().cross( a1,a2)
         """Crosses the two atoms objects and returns one"""
-
-        allowed_stc1 = a1.info['key_value_pairs']['var_stc'] 
-        allowed_stc2 = a2.info['key_value_pairs']['var_stc'] 
         
         #check that a1 and a2 share a cell with initialized slef.slab
         if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
@@ -52,7 +39,7 @@ class CrossOperation(OperationsBase):
 
         while counter < maxcount:
             counter += 1
-            
+            print(counter)
             # Choose direction of cutting plane normal
             # Will be generated entirely at random
             theta = np.pi * self.rng.rand()
@@ -79,22 +66,23 @@ class CrossOperation(OperationsBase):
             if child is None:
                 continue
 
-            atoms  = self.slab.copy()
-            atoms.extend(self.sort_atoms_by_type(child))
-
-            if atoms_too_close(atoms, self.blmin):
+            if atoms_too_close(child, self.blmin):
                 continue
 
+            atoms  = self.slab.copy()
+            atoms.extend(self.sort_atoms_by_type(child))
             atoms.wrap()
 
             var_id = self.get_var_id(atoms)
             if(var_id is None):
+
+                "HEre implement a random fill for the atoms configuration"
                 continue
         
             atoms.info['stc']= var_id
-            return atoms,2
+            return atoms
 
-        return None,2
+        return None
 
 
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):
@@ -113,30 +101,38 @@ class CrossOperation(OperationsBase):
         a1_copy = a1.copy()
         a2_copy = a2.copy()
 
-        #Minfrac checkers 
-        len_sys1 = 0
-        len_sys2 = 0
-        
-        var_numbers = []
-        for  i in self.variable_types:
-            var_numbers.extend(i.numbers)
+        half1 = Atoms()
+        half2 = Atoms()
+        half1.set_cell(self.slab.get_cell())
+        half2.set_cell(self.slab.get_cell())
 
-        for atoms,value,sys in zip([a1_copy,a2_copy],[1,-1],[1,2]):
-            for atom in atoms:
-                if(atom.number in var_numbers):
-                    at_vector =  atom.position - cutting_point
-                    if(np.dot(at_vector,cutting_normal)[0] * value < 0 ):
-                        atoms_result.append(atom)
-                        atom.number = 200
-                        has_been_added = True
-                        if(sys == 1): len_sys1 += 1
-                        if(sys == 2): len_sys2 += 1
-                        
+        "Create two halves of the system"
+        for atom in a1_copy:
+            at_vector =  atom.position - cutting_point
+            if(np.dot(at_vector,cutting_normal)[0] > 0 ):
+                half1.append(atom)
+        for atom in a2_copy:
+            at_vector =  atom.position - cutting_point
+            if(np.dot(at_vector,cutting_normal)[0] * -1 > 0 ):
+                half2.append(atom)
+                                    
         if(len(atoms_result) == 0): return None
         if(self.minfrac is not None):
-            if(self.minfrac > float(float(len_sys1)/len(atoms_result))): return None
-            if(self.minfrac > float(float(len_sys2)/len(atoms_result))): return None
-        atoms_result.wrap()
+            if(self.minfrac > float(float(half1)/float(len(half1)+len(half2)))): return None
+            if(self.minfrac > float(float(half2)/float(len(half1)+len(half2)))): return None
+
+        half1.wrap()
+        half2.wrap()
+
+        while atoms_too_close(half1,half2) and tries < 10:
+            tries += 1
+            half1.positions += self.rng.rand() * cutting_normal
+            half1.wrap()
+
+        if(atoms_too_close(half1,half2)): return None
+
+        atoms_result.extend(half1)
+        atoms_result.extend(half2)
         return atoms_result 
 
     def __get_minfrac(self,minfrac):
@@ -147,4 +143,5 @@ class CrossOperation(OperationsBase):
                 raise ValueError("Specified minfrac value not a float")
         else:
             return None
-  
+
+   

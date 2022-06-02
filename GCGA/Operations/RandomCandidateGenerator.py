@@ -6,8 +6,8 @@ from ase import Atoms
 from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 
 
-from .OperationsBase import OperationsBase
-class RandomCandidateGenerator(OperationsBase):
+from .MutationsBase import MutationsBase
+class RandomCandidateGenerator(MutationsBase):
     """
     Class instantiated when passing:
 
@@ -69,9 +69,10 @@ class RandomCandidateGenerator(OperationsBase):
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
         
         atoms_numbers  = atoms.numbers
-        #StartGenerator(self.slab, atoms_numbers, blmin,
-        #            box_to_place_in=[self.p0, [self.v1, self.v2, self.v3]],test_too_far=self.test_too_far)
-        return_atoms = self.__generate(self.slab,atom_numbers=atoms_numbers,blmin=blmin)
+       
+        child = self.__generate(self.slab,atom_numbers=atoms_numbers,blmin=blmin)
+        return_atoms = self.slab.copy()
+        return_atoms.extend(self.sort_atoms_by_type(child[len(self.slab):]))
         var_id = self.get_var_id(return_atoms)
         if(var_id is not None):
             return_atoms.info['stc']= var_id
@@ -85,9 +86,9 @@ class RandomCandidateGenerator(OperationsBase):
     
 
     "The mutate override to be used in runtime is placed here, it calls the get_random_candidate method"
-    def mutate(self, a1, a2):
-        super().mutate(a1,a2)
-        return self.get_random_candidate(), 0
+    def mutate(self, a1):
+        super().mutate(a1)
+        return self.get_random_candidate()
 
     def get_starting_population(self,population_size=20,maxiter=None):
         starting_population = []

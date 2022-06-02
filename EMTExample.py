@@ -72,12 +72,13 @@ rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.
 #Supported mutations are  "random", "cross", "add", "remove", "permute" and "rattle"
 # The types can be passed as:
 
-mutations = [crossing]#,candidateGenerator]#AD,removing,"permute",rattling]
-chances = [1.0]
+mutations = ["random"]#,candidateGenerator]#AD,removing,"permute",rattling]
+chances = 0.3
 
 #Instantiating of the GCGA object with the selected parameters
-gcga = GCGA(slab,variable_types,variable_range,mutations,chances,
+gcga = GCGA(slab,variable_types,variable_range,mutations,
 simple_fitness_function,calculator = EMT(),
+mutation_chance=chances,
 crossing_operator=crossing,
 initial_structure_generator = candidateGenerator,
 starting_population = 20,population_size=2,steps=100,similarity_penalty=True)

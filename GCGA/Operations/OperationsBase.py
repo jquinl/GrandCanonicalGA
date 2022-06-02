@@ -31,15 +31,6 @@ class OperationsBase(ABC):
 
         self.blmin = self.__set_blmin(slab, variable_types)
 
-    @classmethod
-    def mutation_class(cls):
-        return True
-    def mutation_instance(self):
-        return True
-
-    @abstractmethod
-    def mutate(self, a1, a2):
-        pass
 
     def mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)):
@@ -83,8 +74,8 @@ class OperationsBase(ABC):
                         ats.extend(self.variable_types[i].copy())
                 variable_id = x+1
                 symbol_dictionary[self.atoms_to_hash(ats)] = variable_id
-
             return symbol_dictionary
+
         except:
             raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
 

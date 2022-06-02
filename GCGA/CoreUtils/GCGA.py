@@ -1,5 +1,4 @@
-from select import select
-from struct import calcsize
+import random
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
@@ -24,9 +23,9 @@ class GCGA:
 
     #similarity_penalty is a Prototype, use with caution, for runs with high number of steps impacts performance significantly"
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
-                mutation_chances,fitness_function,
+                fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 10,population_size = 5,
+                starting_population = 10,population_size = 2,
                 stoichiometry_weight = True,similarity_penalty = False,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
@@ -36,7 +35,7 @@ class GCGA:
         self.slab = slab
         self.atomic_types = atomic_types
         self.atomic_ranges = atomic_ranges
-        self.mutation_operations, self.mutation_chances = self.__initialize_mutations(mutation_operations,mutation_chances)
+        self.mutation_operations, self.mutation_chance = self.__initialize_mutations(mutation_operations,mutation_chance)
 
         self.is_fitness_an_object = False
         self.fitness_function = self.__initialize_fitness_function(fitness_function)
@@ -63,18 +62,10 @@ class GCGA:
             self.pts = True
 
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
-        self.crossing_operator =self.__initialize_crossing(crossing_operator)
+        self.crossing_operator =self.__cross_to_instance(crossing_operator)
 
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
-
-    def __initialize_crossing(self,crossing)-> object:
-
-        try:
-            crossing.cross_class()
-            return self.__mutation_to_instance(crossing)
-        except:
-            raise TypeError ("Unssupported Crossing operator")
 
     def __initialize_generator(self,gen)-> object:
         try:
@@ -85,12 +76,9 @@ class GCGA:
 
     def __initialize_mutations(self,mutations,mutation_chance):
 
+        if(not isinstance(mutation_chance,float)):      raise TypeError("Mutation chance is not a float")
         if(not isinstance(mutations,list)):             raise TypeError("The mutations variable is not a list of mutation operator")
-        if(not isinstance(mutation_chance,list)):       raise TypeError("The mutations variable is not a list of floats")
         if(len(mutations)== 0):                         raise ValueError("The mutations list is empty")
-        if(len(mutation_chance)== 0):                   raise ValueError("The mutations chance list is empty")
-        if(not isinstance(mutation_chance[0],float)):   raise TypeError("The mutations chance is not a list of floats")
-        if(len(mutations)!= len(mutation_chance)):      raise ValueError("The mutations list and the chances list dont have the same size")
 
         mut = []
         for i in mutations:
@@ -110,6 +98,18 @@ class GCGA:
                     isClass.mutation_class()
                     new_cls = self.__default_instancing(isClass)
                     new_cls.mutation_instance()
+                    return new_cls
+                except:
+                    raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
+    def __cross_to_instance(self,isClass):
+            try:
+                isClass.cross_instance()
+                return isClass
+            except:
+                try:
+                    isClass.cross_class()
+                    new_cls = self.__default_instancing(isClass)
+                    new_cls.cross_instance()
                     return new_cls
                 except:
                     raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
@@ -155,7 +155,6 @@ class GCGA:
             self.is_fitness_an_object = True
             return function
         
-
         raise Exception("Provided function parameter is not a function or a Object derived from the GCGA.FitnessFunction.BaseFitness class")
 
 
@@ -164,7 +163,7 @@ class GCGA:
         db = DBI(self.db_name)
 
         mutations = self.mutation_operations
-        chances = self.mutation_chances
+        chance = self.mutation_chance
         population = self.starting_population
 
         #--------------------------------Generate initial population---------------------------------"
@@ -206,37 +205,30 @@ class GCGA:
                     cand2 = np.random.randint(ranges)
 
             #Mate the particles
-                res,mut  = self.crossing_operator.mutate(atomslist[cand1],atomslist[cand2])
+                res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
                 if(res is not None):
                     db.update_penalization(atomslist[cand1])
                     db.update_penalization(atomslist[cand2])
-                    db.add_unrelaxed_candidate(res)
                     counter+=1
-                else:
-                #If it doesn't succesfully mate particles it performs the selected mutations
+                    child = res.copy()
+
                     rnd = np.random.rand()
-                    chance = 0.0
-                    permut = 0
-                    if len(mutations) != len(chances): raise Exception("Lenght of mutations array is different from the chances array")
-                    child = None
-                    for k in range(len(mutations)):
-                        chance+= chances[k]
-                        placeholder,mut = mutations[k].mutate(atomslist[cand1],atomslist[cand2])
-                        if(placeholder is not None):
-                            child = placeholder.copy()
-                            permut = mut
-                        if (rnd < chance and placeholder is not None):
-                            break
+                    mutated = None
+                    if(rnd < self.mutation_chance):
+                        ran = range(len(mutations))
+                        random.shuffle(ran)
+                        for k in ran:
+                            if(mutated == None):
+                                mutated = mutations[k].mutate(res)
+                    
+                    if(mutated is not None):
+                        child = mutated.copy()
+                    
+
                     if child is not None:
                         db.add_unrelaxed_candidate(child)
-                        if permut == 0:
-                            pass
-                        elif permut == 1:
-                            db.update_penalization(atomslist[cand1])
-                        elif permut == 2:
-                            db.update_penalization(atomslist[cand1])
-                            db.update_penalization(atomslist[cand2])
                         counter+=1
+
 
                 while db.get_number_of_unrelaxed_candidates() > 0:
 
