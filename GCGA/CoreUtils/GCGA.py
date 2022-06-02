@@ -63,16 +63,17 @@ class GCGA:
             self.pts = True
 
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
-        self.crossing_operator =self.__initialize_crossing(crossing_operator,CO)
+        self.crossing_operator =self.__initialize_crossing(crossing_operator)
 
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
 
-    def __initialize_crossing(self,crossing,ctype)-> object:
+    def __initialize_crossing(self,crossing)-> object:
 
-        if issubclass(crossing,ctype):
+        try:
+            crossing.cross_class()
             return self.__mutation_to_instance(crossing)
-        else:
+        except:
             raise TypeError ("Unssupported Crossing operator")
 
     def __initialize_generator(self,gen)-> object:
@@ -118,7 +119,7 @@ class GCGA:
             if issubclass(isClass,RCG):
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,CO):
-                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
+                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
             """  if issubclass(isClass,AD):
                 return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,RM):
@@ -134,7 +135,7 @@ class GCGA:
             if isClass == "random":
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "cross":
-                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.1)
+                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
             """if isClass == "add":
                 return AD(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "remove":

@@ -11,16 +11,23 @@ class CrossOperation(OperationsBase):
     random_translation: Applies random translation to both parent structures before mating
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.1,minfrac = None,random_translation =False):
+                rng=np.random,stc_change_chance = 0.1,minfrac = 0.2,random_translation =False):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
         self.random_translation = random_translation
+    
+    @classmethod
+    def cross_class(cls):
+        pass
+    def cross_instance(self):
+        pass
+
     def cross(self,a1,a2):
         if(self.slab.get_cell().all() != a1.get_cell().all() or self.slab.get_cell().all() != a2.get_cell().all() ):
             raise ValueError('Different cell sizes found for slab and inputed structures')
-        
+    
     def mutate(self, a1, a2):
         super().mutate( a1,a2)
 
