@@ -162,7 +162,7 @@ class CrossOperation(CrossBase):
         return ratoms
 
 
-    #UNused
+    #UNUSED
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):
 
         """Creates a child from two parents using the given cut.
