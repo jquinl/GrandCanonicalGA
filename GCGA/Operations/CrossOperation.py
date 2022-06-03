@@ -34,7 +34,6 @@ class CrossOperation(CrossBase):
         a1 = a1[len(self.slab) :len(a1)]
         a2 = a2[len(self.slab) :len(a2)]
     
-
     
         counter = 0
         maxcount = 1000
@@ -104,6 +103,7 @@ class CrossOperation(CrossBase):
         a1_copy = a1.copy()
         a2_copy = a2.copy()
 
+        cm = (a1_copy.get_center_of_mass() + a2_copy.get_center_of_mass())/2.0
         theta = self.rng.rand() * 2 * np.pi 
         phi = self.rng.rand() * np.pi  
         e = np.array((np.sin(phi) * np.cos(theta),
@@ -157,6 +157,8 @@ class CrossOperation(CrossBase):
         ratoms.extend(tmpf)
         ratoms.extend(tmpm)
         if(len(ratoms) == 0): return None
+        ratoms.translate(cm)
+
         return ratoms
 
 
@@ -214,7 +216,6 @@ class CrossOperation(CrossBase):
 
         atoms_result.extend(half1)
         atoms_result.extend(half2)
-        write("test.traj",[atoms_result,half1,half2,a1,a2])
         return atoms_result 
 
     def __get_minfrac(self,minfrac):
