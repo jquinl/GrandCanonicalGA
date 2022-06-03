@@ -1,5 +1,6 @@
 
 import numpy as np
+import random
 from ase import Atoms
 from ase.ga.utilities import atoms_too_close
 
@@ -17,8 +18,8 @@ class CrossOperation(CrossBase):
         self.minfrac = self.__get_minfrac(minfrac)
         self.stc_change_chance = stc_change_chance
         self.random_translation = random_translation
+        self.combination_lens =  self.__get_lens()
     
- 
     def cross(self, a1, a2):
         super().cross( a1,a2)
         """Crosses the two atoms objects and returns one"""
@@ -39,7 +40,6 @@ class CrossOperation(CrossBase):
 
         while counter < maxcount:
             counter += 1
-            print(counter)
             # Choose direction of cutting plane normal
             # Will be generated entirely at random
             theta = np.pi * self.rng.rand()
@@ -65,24 +65,51 @@ class CrossOperation(CrossBase):
            
             if child is None:
                 continue
-
-            if atoms_too_close(child, self.blmin):
-                continue
-
             atoms  = self.slab.copy()
             atoms.extend(self.sort_atoms_by_type(child))
-            atoms.wrap()
+            if atoms_too_close(atoms, self.blmin):
 
+                continue
+            atoms.wrap()
             var_id = self.get_var_id(atoms)
             if(var_id is None):
-
-                "HEre implement a random fill for the atoms configuration"
-                continue
-        
+                new_ats = self.reassign_atoms(atoms[len(self.slab):])
+                if(new_ats is None):
+                    continue
+                atoms  = self.slab.copy()
+                atoms.extend(self.sort_atoms_by_type(new_ats))
+                
             atoms.info['stc']= var_id
             return atoms
 
         return None
+    def reassign_atoms(self,atoms):
+        
+        candidates = []
+        for i in range(len(self.combination_lens)):
+            if len(atoms) == self.combination_lens[i]:
+                candidates.append(i)
+        if(len(candidates)== 0): return None
+        cand = random.choice(candidates)
+        new_atoms = Atoms()
+        for i in range(len(self.combination_matrix[cand])):
+            for k in range(self.combination_matrix[cand][i]):
+                for i in self.variable_types[i]:
+                    new_atoms.append(i)
+        
+        if(len(atoms)!= len(new_atoms)): return None
+
+        nums = new_atoms.get_atomic_numbers()
+        random.shuffle(nums)
+
+        ratoms = atoms.copy()
+        ratoms.set_atomic_numbers(nums)
+
+        return ratoms
+
+
+
+        
 
 
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):
@@ -115,21 +142,26 @@ class CrossOperation(CrossBase):
             at_vector =  atom.position - cutting_point
             if(np.dot(at_vector,cutting_normal)[0] * -1 > 0 ):
                 half2.append(atom)
-                                    
-        if(len(atoms_result) == 0): return None
+
+        if(len(half1)+len(half2) == 0):return None
         if(self.minfrac is not None):
-            if(self.minfrac > float(float(half1)/float(len(half1)+len(half2)))): return None
-            if(self.minfrac > float(float(half2)/float(len(half1)+len(half2)))): return None
+            if(self.minfrac > float(float(len(half1))/float(len(half1)+len(half2)))): return None
+            if(self.minfrac > float(float(len(half2))/float(len(half1)+len(half2)))): return None
 
         half1.wrap()
         half2.wrap()
-
-        while atoms_too_close(half1,half2) and tries < 10:
+        comb = half1.copy()
+        comb.extend(half2.copy())
+        tries = 0
+        while atoms_too_close(comb,self.blmin) and tries < 10:
+            comb = half1.copy()
+            comb.extend(half2.copy())
             tries += 1
             half1.positions += self.rng.rand() * cutting_normal
             half1.wrap()
 
-        if(atoms_too_close(half1,half2)): return None
+        if(atoms_too_close(comb,self.blmin)):
+            return None
 
         atoms_result.extend(half1)
         atoms_result.extend(half2)
@@ -144,4 +176,11 @@ class CrossOperation(CrossBase):
         else:
             return None
 
-   
+    def __get_lens(self):
+        lens = []
+        for i in self.combination_matrix:
+            sums = 0
+            for k in i:
+                sums+k
+            lens.append(sums)
+        return lens
