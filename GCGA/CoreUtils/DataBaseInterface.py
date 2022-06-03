@@ -66,7 +66,7 @@ class DataBaseInterface:
         dbid = atoms.info['key_value_pairs']['dbid']
         self.db.update(dbid,similarity = atoms.info['key_value_pairs']['similarity'] + 1)
         
-    "THIS NEEDS FIXING"
+   
     def get_atoms_from_id(self,dbid):
         try:
             atoms =  self.db.get_atoms(dbid=dbid,add_additional_information=True)

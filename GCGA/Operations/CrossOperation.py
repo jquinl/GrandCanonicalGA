@@ -1,8 +1,10 @@
 
+from itertools import count,chain
 import numpy as np
 import random
 from ase import Atoms
 from ase.ga.utilities import atoms_too_close
+from ase.io import write
 
 from .CrossBase import CrossBase
 class CrossOperation(CrossBase):
@@ -31,44 +33,27 @@ class CrossOperation(CrossBase):
         # Only consider the atoms to optimize
         a1 = a1[len(self.slab) :len(a1)]
         a2 = a2[len(self.slab) :len(a2)]
-        
+    
+
+    
         counter = 0
         maxcount = 1000
         a1_copy = a1.copy()
         a2_copy = a2.copy()
-        cell = self.slab.get_cell()
 
         while counter < maxcount:
             counter += 1
             # Choose direction of cutting plane normal
             # Will be generated entirely at random
-            theta = np.pi * self.rng.rand()
-            phi = 2. * np.pi * self.rng.rand()
-            cut_n = np.array([np.cos(phi) * np.sin(theta),
-                                np.sin(phi) * np.sin(theta), np.cos(theta)])
-           
-            if(self.random_translation):
-                # Randomly translate parent structures
-                for a_copy, a in zip([a1_copy, a2_copy], [a1, a2]):
-                    a_copy.set_positions(a.get_positions())
-                    for i in range(len(cell)):
-                        a_copy.positions += self.rng.rand() * cell[i]
-                    a_copy.wrap()
             
-            # Generate the cutting point in scaled coordinates
-            cosp1 = np.average(a1_copy.get_scaled_positions(), axis=0)
-            cosp2 = np.average(a2_copy.get_scaled_positions(), axis=0)
-            cut_p = np.zeros((1, 3))
-            for i in range(3):
-                cut_p[0, i] = 0.5 * (cosp1[i] + cosp2[i])
-            child = self.get_pairing(a1_copy, a2_copy, cut_p, cut_n)
+            child = self.get_new_candidate(a1_copy, a2_copy)
            
             if child is None:
                 continue
+
             atoms  = self.slab.copy()
             atoms.extend(self.sort_atoms_by_type(child))
             if atoms_too_close(atoms, self.blmin):
-
                 continue
             atoms.wrap()
             var_id = self.get_var_id(atoms)
@@ -78,24 +63,29 @@ class CrossOperation(CrossBase):
                     continue
                 atoms  = self.slab.copy()
                 atoms.extend(self.sort_atoms_by_type(new_ats))
-                
+            
+            var_id = self.get_var_id(atoms)
+            if(var_id is None):
+                continue
             atoms.info['stc']= var_id
+            
             return atoms
 
         return None
     def reassign_atoms(self,atoms):
-        
         candidates = []
         for i in range(len(self.combination_lens)):
             if len(atoms) == self.combination_lens[i]:
                 candidates.append(i)
+
         if(len(candidates)== 0): return None
         cand = random.choice(candidates)
         new_atoms = Atoms()
         for i in range(len(self.combination_matrix[cand])):
             for k in range(self.combination_matrix[cand][i]):
-                for i in self.variable_types[i]:
-                    new_atoms.append(i)
+                for z in self.variable_types[i]:
+                    new_atoms.append(z)
+        
         
         if(len(atoms)!= len(new_atoms)): return None
 
@@ -104,14 +94,73 @@ class CrossOperation(CrossBase):
 
         ratoms = atoms.copy()
         ratoms.set_atomic_numbers(nums)
-
         return ratoms
 
 
 
         
 
+    def get_new_candidate(self,a1,a2):
+        a1_copy = a1.copy()
+        a2_copy = a2.copy()
 
+        theta = self.rng.rand() * 2 * np.pi 
+        phi = self.rng.rand() * np.pi  
+        e = np.array((np.sin(phi) * np.cos(theta),
+                      np.sin(theta) * np.sin(phi),
+                      np.cos(phi)))
+
+        a1_copy.translate(-a1_copy.get_center_of_mass())
+        a2_copy.translate(-a2_copy.get_center_of_mass())
+
+
+
+        fmap = [np.dot(x, e) for x in a1_copy.get_positions()]
+        mmap = [-np.dot(x, e) for x in a2_copy.get_positions()]
+        ain = sorted([i for i in chain(fmap, mmap) if i > 0],
+                     reverse=True)
+        aout = sorted([i for i in chain(fmap, mmap) if i < 0],
+                      reverse=True)
+
+
+        if(len(ain)-max(self.combination_lens) > 0):
+            off = len(ain)-random.choice(self.combination_lens)
+            dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
+            a1_copy.translate(e * dist)
+            a2_copy.translate(-e * dist)
+            pass
+        elif(len(ain)-min(self.combination_lens) <0):
+            off = len(ain)-random.choice(self.combination_lens)
+            dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
+            a1_copy.translate(e * dist)
+            a2_copy.translate(-e * dist)
+        
+
+        fmap = [np.dot(x, e) for x in a1_copy.get_positions()]
+        mmap = [-np.dot(x, e) for x in a2_copy.get_positions()]
+        ain = sorted([i for i in chain(fmap, mmap) if i > 0],
+                     reverse=True)
+        aout = sorted([i for i in chain(fmap, mmap) if i < 0],
+                      reverse=True)
+
+        if(len(ain) not in self.combination_lens): return None
+        tmpf, tmpm = Atoms(), Atoms()
+        for atom in a1_copy:
+            if np.dot(atom.position, e) > 0:
+                tmpf.append(atom)
+        for atom in a2_copy:
+            if np.dot(atom.position, e) < 0:
+                tmpm.append(atom)
+
+        ratoms = Atoms()
+        ratoms.set_cell(self.slab.get_cell())
+        ratoms.extend(tmpf)
+        ratoms.extend(tmpm)
+        if(len(ratoms) == 0): return None
+        return ratoms
+
+
+    #UNused
     def get_pairing(self,a1,a2,cutting_point, cutting_normal):
 
         """Creates a child from two parents using the given cut.
@@ -136,11 +185,11 @@ class CrossOperation(CrossBase):
         "Create two halves of the system"
         for atom in a1_copy:
             at_vector =  atom.position - cutting_point
-            if(np.dot(at_vector,cutting_normal)[0] > 0 ):
+            if(np.dot(at_vector,cutting_normal) > 0.0 ):
                 half1.append(atom)
         for atom in a2_copy:
             at_vector =  atom.position - cutting_point
-            if(np.dot(at_vector,cutting_normal)[0] * -1 > 0 ):
+            if(np.dot(at_vector,cutting_normal) * -1.0 > 0.0 ):
                 half2.append(atom)
 
         if(len(half1)+len(half2) == 0):return None
@@ -148,8 +197,8 @@ class CrossOperation(CrossBase):
             if(self.minfrac > float(float(len(half1))/float(len(half1)+len(half2)))): return None
             if(self.minfrac > float(float(len(half2))/float(len(half1)+len(half2)))): return None
 
-        half1.wrap()
-        half2.wrap()
+        #half1.wrap()
+        #half2.wrap()
         comb = half1.copy()
         comb.extend(half2.copy())
         tries = 0
@@ -165,6 +214,7 @@ class CrossOperation(CrossBase):
 
         atoms_result.extend(half1)
         atoms_result.extend(half2)
+        write("test.traj",[atoms_result,half1,half2,a1,a2])
         return atoms_result 
 
     def __get_minfrac(self,minfrac):
@@ -178,9 +228,11 @@ class CrossOperation(CrossBase):
 
     def __get_lens(self):
         lens = []
-        for i in self.combination_matrix:
-            sums = 0
-            for k in i:
-                sums+k
+
+        for i in range(len(self.combination_matrix)):
+            sums  = 0
+            for k in self.combination_matrix[i]:
+                for z in self.variable_types[i]:
+                    sums+=k
             lens.append(sums)
         return lens
