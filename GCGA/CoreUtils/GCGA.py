@@ -196,7 +196,7 @@ class GCGA:
             maxcounter += 1
             succes = False
             subtries = 0
-            while(not succes or subtries<3):
+            while(not succes and subtries<3):
                 
                 atomslist = db.get_better_candidates(n=pop[subtries],weighted=self.wt,structure_similarity=self.pts)
                 subtries +=1
