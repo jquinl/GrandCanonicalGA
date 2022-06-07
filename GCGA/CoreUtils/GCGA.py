@@ -25,7 +25,7 @@ class GCGA:
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 10,population_size = 2,
+                starting_population = 10,
                 stoichiometry_weight = True,similarity_penalty = False,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
@@ -53,7 +53,6 @@ class GCGA:
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
         
         self.starting_population = starting_population
-        self.population = population_size
         self.wt = stoichiometry_weight
         self.pts = similarity_penalty
         if(not stoichiometry_weight and similarity_penalty):
@@ -191,56 +190,61 @@ class GCGA:
 
         counter = 0
         maxcounter = 0
-
+        pop = [2,5,10]
+        
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
+            succes = False
+            subtries = 0
+            while(not succes or subtries<3):
+                subtries +=1
+                atomslist = db.get_better_candidates(n=pop[subtries],weighted=self.wt,structure_similarity=self.pts)
+                ranges = len(atomslist)
+                #Choose two of the most stable structures to pair
+                cand1 = np.random.randint(ranges)
+                cand2 = np.random.randint(ranges)
+                if(ranges >1):
+                    while cand1 == cand2:
+                        cand2 = np.random.randint(ranges)
 
-            atomslist = db.get_better_candidates(n=self.population,weighted=self.wt,structure_similarity=self.pts)
-            ranges = len(atomslist)
-            #Choose two of the most stable structures to pair
-            cand1 = np.random.randint(ranges)
-            cand2 = np.random.randint(ranges)
-            if(ranges >1):
-                while cand1 == cand2:
-                    cand2 = np.random.randint(ranges)
-
-            #Mate the particles
-                res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
-                if(res is not None):
-                    db.update_penalization(atomslist[cand1])
-                    db.update_penalization(atomslist[cand2])
-                    counter+=1
-                    child = res.copy()
-
-                    rnd = np.random.rand()
-                    mutated = None
-                    if(rnd < self.mutation_chance):
-                        ran = range(len(mutations))
-                        random.shuffle(ran)
-                        for k in ran:
-                            if(mutated == None):
-                                mutated = mutations[k].mutate(res)
-                    
-                    if(mutated is not None):
-                        child = mutated.copy()
-                    
-
-                    if child is not None:
-                        db.add_unrelaxed_candidate(child)
+                #Mate the particles
+                    res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
+                    if(res is not None):
+                        succes = True
+                        db.update_penalization(atomslist[cand1])
+                        db.update_penalization(atomslist[cand2])
                         counter+=1
+                        child = res.copy()
+
+                        rnd = np.random.rand()
+                        mutated = None
+                        if(rnd < self.mutation_chance):
+                            ran = range(len(mutations))
+                            random.shuffle(ran)
+                            for k in ran:
+                                if(mutated == None):
+                                    mutated = mutations[k].mutate(res)
+                        
+                        if(mutated is not None):
+                            child = mutated.copy()
+                        
+
+                        if child is not None:
+                            db.add_unrelaxed_candidate(child)
+                            counter+=1
 
 
-                while db.get_number_of_unrelaxed_candidates() > 0:
+            while db.get_number_of_unrelaxed_candidates() > 0:
 
-                    atoms = db.get_first_unrelaxed()
-                    atoms = self.relax(atoms)
+                atoms = db.get_first_unrelaxed()
+                atoms = self.relax(atoms)
 
-                    if(self.is_fitness_an_object):
-                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
-                    else:    
-                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-                    
-                    db.update_to_relaxed(atoms)
+                if(self.is_fitness_an_object):
+                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+                else:    
+                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+                
+                db.update_to_relaxed(atoms)
 
         atomslist = db.get_better_candidates_raw(max_num=True)
 
