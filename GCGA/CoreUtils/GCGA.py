@@ -197,8 +197,10 @@ class GCGA:
             succes = False
             subtries = 0
             while(not succes or subtries<3):
-                subtries +=1
+                
                 atomslist = db.get_better_candidates(n=pop[subtries],weighted=self.wt,structure_similarity=self.pts)
+                subtries +=1
+
                 ranges = len(atomslist)
                 #Choose two of the most stable structures to pair
                 cand1 = np.random.randint(ranges)
@@ -206,7 +208,6 @@ class GCGA:
                 if(ranges >1):
                     while cand1 == cand2:
                         cand2 = np.random.randint(ranges)
-
                 #Mate the particles
                     res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
                     if(res is not None):
