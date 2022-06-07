@@ -1,7 +1,6 @@
 from pathlib import Path
 from math import tanh, sqrt, exp
 from ase.ga.standard_comparators import InteratomicDistanceComparator
-
 from ase.db import connect
 class DataBaseInterface:
 
@@ -135,8 +134,8 @@ class DataBaseInterface:
         return list(atoms)
 
     def __get_similarity(self,atom):
-        comp = InteratomicDistanceComparator(n_top=len(atom), pair_cor_cum_diff=0.015,
-                 pair_cor_max=0.7, dE=0.5, mic=True)
+        comp = InteratomicDistanceComparator(n_top=len(atom), pair_cor_cum_diff=0.030,
+                 pair_cor_max=1.0, dE=0.5, mic=True)
         atoms = self.get_relaxed_candidates()
         hits = 0
         for a in atoms:

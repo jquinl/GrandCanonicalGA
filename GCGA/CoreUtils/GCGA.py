@@ -214,7 +214,6 @@ class GCGA:
                         succes = True
                         db.update_penalization(atomslist[cand1])
                         db.update_penalization(atomslist[cand2])
-                        counter+=1
                         child = res.copy()
 
                         rnd = np.random.rand()
@@ -232,11 +231,12 @@ class GCGA:
 
                         if child is not None:
                             db.add_unrelaxed_candidate(child)
+                            
                             counter+=1
 
 
             while db.get_number_of_unrelaxed_candidates() > 0:
-
+                print(counter)
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
 
