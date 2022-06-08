@@ -1,5 +1,7 @@
 import random
+import time
 from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
+from GCGA.CoreUtils.Population import Population
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
@@ -25,7 +27,7 @@ class GCGA:
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 10,
+                starting_population = 10,population_size = 20,population_size_even = False,
                 stoichiometry_weight = True,similarity_penalty = False,calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
@@ -52,6 +54,11 @@ class GCGA:
             else:
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
         
+        if(population_size_even):
+            while(len(self.__set_combination_matrix()) % population_size != 0):
+                population_size += 1
+
+        self.pop_size = population_size
         self.starting_population = starting_population
         self.wt = stoichiometry_weight
         self.pts = similarity_penalty
@@ -65,6 +72,9 @@ class GCGA:
 
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
+
+        
+        
 
     def __initialize_generator(self,gen)-> object:
         try:
@@ -162,9 +172,11 @@ class GCGA:
         db = DBI(self.db_name)
 
         mutations = self.mutation_operations
-        chance = self.mutation_chance
         population = self.starting_population
 
+        #Here start population if size is smaller than pop size fill it w random structures
+
+        pop = Population(self.pop_size,db)
         #--------------------------------Generate initial population---------------------------------"
         starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
 
@@ -182,7 +194,9 @@ class GCGA:
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
             else:    
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-            db.update_to_relaxed(atoms)
+
+            pop.update_population(atoms)
+            #db.update_to_relaxed(atoms,similarity=self.pts)
 
 
         steps = self.steps
@@ -190,15 +204,15 @@ class GCGA:
 
         counter = 0
         maxcounter = 0
-        pop = [2,5,10]
-        
+        poprange = [2,5,10]
+
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
             succes = False
             subtries = 0
             while(not succes and subtries<3):
+                atomslist = pop.get_better_candidates(n=poprange[subtries])
                 
-                atomslist = db.get_better_candidates(n=pop[subtries],weighted=self.wt,structure_similarity=self.pts)
                 subtries +=1
 
                 ranges = len(atomslist)
@@ -210,11 +224,13 @@ class GCGA:
                         cand2 = np.random.randint(ranges)
                 #Mate the particles
                     res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
+                    
                     if(res is not None):
                         succes = True
                         db.update_penalization(atomslist[cand1])
                         db.update_penalization(atomslist[cand2])
                         child = res.copy()
+
 
                         rnd = np.random.rand()
                         mutated = None
@@ -224,19 +240,17 @@ class GCGA:
                             for k in ran:
                                 if(mutated == None):
                                     mutated = mutations[k].mutate(res)
-                        
                         if(mutated is not None):
                             child = mutated.copy()
                         
-
                         if child is not None:
                             db.add_unrelaxed_candidate(child)
+                            print("Structure evaluation {}".format(counter))
                             
                             counter+=1
 
-
+            
             while db.get_number_of_unrelaxed_candidates() > 0:
-                print(counter)
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
 
@@ -244,8 +258,7 @@ class GCGA:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
                 else:    
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-                
-                db.update_to_relaxed(atoms)
+                pop.update_population(atoms)
 
         atomslist = db.get_better_candidates_raw(max_num=True)
 
@@ -256,7 +269,6 @@ class GCGA:
             self.trajfile.write(atoms)
 
     def relax(self,atoms):
-        print("structure evaluation")
         results = None
         if(isinstance(self.calc,EMT)):
             atoms.set_calculator( self.calc)
@@ -286,3 +298,23 @@ class GCGA:
             return atoms
         else:
             return None
+
+    def __set_combination_matrix(self):
+            if(len(self.atomic_ranges) != len(self.atomic_types)): raise ValueError("Variable type list length and variable range list length dont match")
+            try:
+                lengths = 1
+                lengths_array = []
+                for i in range(len(self.atomic_types)):
+                    lengths_array.append(len(self.atomic_ranges[i]))
+                    lengths = lengths * len(self.atomic_ranges[i])
+
+                combiantion_matrix  = np.zeros((lengths,len(self.atomic_ranges)),dtype = int)
+
+                for x in range(lengths):
+                    for i in range(len(self.atomic_ranges)):
+                        advancement = int(np.prod(lengths_array[i+1:len(self.atomic_ranges)]))
+                        pos = int(x / advancement) % len(self.atomic_ranges[i])
+                        combiantion_matrix[x,i]=self.atomic_ranges[i][pos]
+                return combiantion_matrix
+            except:
+                raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")

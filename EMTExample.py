@@ -81,7 +81,7 @@ simple_fitness_function,calculator = EMT(),
 mutation_chance=chances,
 crossing_operator=crossing,
 initial_structure_generator = candidateGenerator,
-starting_population = 20,population_size=2,steps=100,similarity_penalty=True)
+starting_population = 20,population_size=2,steps=100,similarity_penalty=False)
 
 #Calling the run function will initialize the run
 gcga.run()
