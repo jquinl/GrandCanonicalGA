@@ -1,9 +1,8 @@
-from cmath import sqrt
 import copy
 import random
 import numpy as np
 from ase import Atoms
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
+
 
 
 from .MutationsBase import MutationsBase
@@ -31,15 +30,17 @@ class RandomCandidateGenerator(MutationsBase):
         - 1.0 to use the entirety of the unoccupied cell in the slab atoms object
         - default 0.8
     """
-    @classmethod
-    def rand_generator(cls):
-        pass
 
     def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                     random_generation_box_size = 0.8,rng=np.random,max_bond_lenght_multi=4.0):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
         self.max_blen = max_bond_lenght_multi
+
+    @classmethod
+    def rand_generator(cls):
+        pass
+
 
     def get_candidate_by_number(self,number,maxiter=None) -> Atoms:
         if(number > len(self.combination_matrix)):
@@ -64,13 +65,10 @@ class RandomCandidateGenerator(MutationsBase):
                 return return_atoms
             else:
                 raise Exception("Provided atomic combination is not present in combination matrix")
-        unique_atom_types = get_all_atom_types(self.slab, atoms.numbers)
-        blmin = closest_distances_generator(atom_numbers=unique_atom_types,
-                                    ratio_of_covalent_radii=self.ratio_of_covalent_radii)
         
         atoms_numbers  = atoms.numbers
        
-        child = self.__generate(self.slab,atom_numbers=atoms_numbers,blmin=blmin)
+        child = self.__generate(self.slab,atom_numbers=atoms_numbers,blmin=self.blmin)
         return_atoms = self.slab.copy()
         return_atoms.extend(self.sort_atoms_by_type(child[len(self.slab):]))
         var_id = self.get_var_id(return_atoms)
@@ -178,14 +176,9 @@ class RandomCandidateGenerator(MutationsBase):
     def __overlaps(self,atoms,atomstoadd,blmin):
         for at in atoms:
             for nat in atomstoadd:
-                if(not self.__check_overlap(at,nat,blmin[(at.number,nat.number)])):
+                if(not self._check_overlap(at,nat,blmin[(at.number,nat.number)])):
                     return True
         return False 
-
-    def __check_overlap(self,atom1,atom2,dist):
-        return dist*dist < ((atom1.position[0]-atom2.position[0]) * (atom1.position[0]-atom2.position[0]) +
-                            (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +
-                            (atom1.position[2]-atom2.position[2]) * (atom1.position[2]-atom2.position[2]))
 
     def __random_position_in_box(self):
         return self.p0 + (self.rng.random() * self.v1 + self.rng.random() * self.v2 + self.rng.random() * self.v3)

@@ -1,6 +1,6 @@
 
 
-from abc import ABC,abstractmethod
+from abc import ABC
 from turtle import Turtle
 from typing import List, Dict, Any
 import hashlib
@@ -10,8 +10,7 @@ from ..CoreUtils.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
-
+from ase.ga.utilities import closest_distances_generator,get_all_atom_types
 
 
 class OperationsBase(ABC):
@@ -158,4 +157,16 @@ class OperationsBase(ABC):
         comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
                 pair_cor_max=0.7, mic=True)
         return comp.looks_like(atoms1,atoms2)
+    def _check_overlap_all_atoms(self,atoms,blmin):
+        indices = np.array([ a for a in np.arange(len(atoms))])
+        for i in indices:
+            for j in indices:
+                if(i != j):
+                    if(not self._check_overlap(atoms[i],atoms[j],blmin[(atoms[i].number,atoms[j].number)])):
+                        return True
+        return False
+    def _check_overlap(self,atom1,atom2,dist):
+        return dist*dist < ((atom1.position[0]-atom2.position[0]) * (atom1.position[0]-atom2.position[0]) +
+                            (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +
+                            (atom1.position[2]-atom2.position[2]) * (atom1.position[2]-atom2.position[2]))
 

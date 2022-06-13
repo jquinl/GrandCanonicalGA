@@ -1,6 +1,6 @@
 #Import these for the GA code to run
 
-from GCGA.CoreUtils.GCGA import GCGA
+from GCGA.GCGA import GCGA
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.MutationsBase import OperationsBase
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG

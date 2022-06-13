@@ -1,12 +1,14 @@
 #Import these for the GA code to run
 
-from GCGA.CoreUtils.GCGA import GCGA
+from GCGA.GCGA import GCGA
 from GCGA.Operations.CrossOperation import CrossOperation as CO
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
-"""from GCGA.Operations.AddOperation import AddOperation as AD
-from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
+
+from GCGA.Operations.RemoveOperation import RemoveOperation as RM
+"""from GCGA.Operations.AddOperation import AddOperation as AD
+
 """
 from GCGA.FitnessFunction.BaseFitness import GibbsFreeEnergy
 
@@ -45,7 +47,7 @@ environment = {"mu_Au": 1.0}
 gfe = GibbsFreeEnergy(variable_reference_energies=references,environmental_variables=environment, base_reference_energy= base_reference)
 
 #Indicate static part of the system"
-a = 28.0
+a = 24.0
 slab = Atoms(cell=[a,a,a],
              pbc=True)
 
@@ -54,34 +56,37 @@ slab = Atoms(cell=[a,a,a],
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[20]]
+variable_range = [[1],[19,20]]
 
 #Indicate mutations to be performed during the run. They can be passes as an instantiated class, as a type or as a string,
 # If passed as type or string, they will be instantiated with default values. A more precisse fine tuning of the run requeres the classes to be preinstantiated when
 #  passed into rhe GCGA object"
 candidateGenerator = RCG(slab,variable_types,variable_range,max_bond_lenght_multi=2.0)
 crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
-"""adding = AD(slab,variable_types,variable_range)
-removing = RM(slab,variable_types,variable_range)
 permutating = PM(slab,variable_types,variable_range)
-rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.1)
+removing = RM(slab,variable_types,variable_range)
+
+"""adding = AD(slab,variable_types,variable_range)
 """
+rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.1)
 # Once instantiated, they have to be added to a tuple. A second tuple containing the chances of occurrence of each mutation if the crossing fails
 # (Ideally, the sum of mutations must be equal to 1.0)
 # The crossing can also be passed as a complimentary mutation, although its called independently during the execution.
 #Supported mutations are  "random", "cross", "add", "remove", "permute" and "rattle"
 # The types can be passed as:
 
-mutations = ["random"]#,candidateGenerator]#AD,removing,"permute",rattling]
+mutations = ["random",permutating,rattling]
+mutations = ["random","permute","rattle","remove","add"]#,candidateGenerator]#AD,removing,"permute",rattling]
 chances = 0.3
 
 #Instantiating of the GCGA object with the selected parameters
 gcga = GCGA(slab,variable_types,variable_range,mutations,
-simple_fitness_function,calculator = EMT(),
+simple_fitness_function,
+calculator = EMT(),
 mutation_chance=chances,
 crossing_operator=crossing,
 initial_structure_generator = candidateGenerator,
-starting_population = 20,population_size=2,steps=100,similarity_penalty=False)
+starting_population = 20,population_size=20,steps=100)
 
 #Calling the run function will initialize the run
 gcga.run()

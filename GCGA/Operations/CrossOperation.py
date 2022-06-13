@@ -3,8 +3,6 @@ from itertools import count,chain
 import numpy as np
 import random
 from ase import Atoms
-from ase.ga.utilities import atoms_too_close
-from ase.io import write
 
 from .CrossBase import CrossBase
 class CrossOperation(CrossBase):
@@ -52,7 +50,7 @@ class CrossOperation(CrossBase):
 
             atoms  = self.slab.copy()
             atoms.extend(self.sort_atoms_by_type(child))
-            if atoms_too_close(atoms, self.blmin):
+            if self._check_overlap_all_atoms(atoms, self.blmin):
                 continue
             atoms.wrap()
             var_id = self.get_var_id(atoms)
@@ -62,7 +60,8 @@ class CrossOperation(CrossBase):
                     continue
                 atoms  = self.slab.copy()
                 atoms.extend(self.sort_atoms_by_type(new_ats))
-            
+            if self._check_overlap_all_atoms(atoms, self.blmin):
+                continue
             var_id = self.get_var_id(atoms)
             if(var_id is None):
                 continue
@@ -123,13 +122,12 @@ class CrossOperation(CrossBase):
                       reverse=True)
 
 
-        if(len(ain)-max(self.combination_lens) > 0):
+        if(len(ain)-max(self.combination_lens) < 0):
             off = len(ain)-random.choice(self.combination_lens)
             dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
             a1_copy.translate(e * dist)
             a2_copy.translate(-e * dist)
-            pass
-        elif(len(ain)-min(self.combination_lens) <0):
+        elif(len(ain)-min(self.combination_lens) >0):
             off = len(ain)-random.choice(self.combination_lens)
             dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
             a1_copy.translate(e * dist)
@@ -162,62 +160,6 @@ class CrossOperation(CrossBase):
         return ratoms
 
 
-    #UNUSED
-    def get_pairing(self,a1,a2,cutting_point, cutting_normal):
-
-        """Creates a child from two parents using the given cut.
-
-        Returns None if the generated structure does not contain
-        a large enough fraction of each parent (see self.minfrac).
-
-        Does not check whether atoms are too close.
-
-        Assumes the 'slab' parts have been removed from the parent
-        structures. Stoichiometry agnostic"""
-        atoms_result = Atoms()
-        atoms_result.set_cell(self.slab.get_cell())
-        a1_copy = a1.copy()
-        a2_copy = a2.copy()
-
-        half1 = Atoms()
-        half2 = Atoms()
-        half1.set_cell(self.slab.get_cell())
-        half2.set_cell(self.slab.get_cell())
-
-        "Create two halves of the system"
-        for atom in a1_copy:
-            at_vector =  atom.position - cutting_point
-            if(np.dot(at_vector,cutting_normal) > 0.0 ):
-                half1.append(atom)
-        for atom in a2_copy:
-            at_vector =  atom.position - cutting_point
-            if(np.dot(at_vector,cutting_normal) * -1.0 > 0.0 ):
-                half2.append(atom)
-
-        if(len(half1)+len(half2) == 0):return None
-        if(self.minfrac is not None):
-            if(self.minfrac > float(float(len(half1))/float(len(half1)+len(half2)))): return None
-            if(self.minfrac > float(float(len(half2))/float(len(half1)+len(half2)))): return None
-
-        #half1.wrap()
-        #half2.wrap()
-        comb = half1.copy()
-        comb.extend(half2.copy())
-        tries = 0
-        while atoms_too_close(comb,self.blmin) and tries < 10:
-            comb = half1.copy()
-            comb.extend(half2.copy())
-            tries += 1
-            half1.positions += self.rng.rand() * cutting_normal
-            half1.wrap()
-
-        if(atoms_too_close(comb,self.blmin)):
-            return None
-
-        atoms_result.extend(half1)
-        atoms_result.extend(half2)
-        return atoms_result 
-
     def __get_minfrac(self,minfrac):
         if minfrac is not None:
             if(isinstance(minfrac,float)):
@@ -227,13 +169,14 @@ class CrossOperation(CrossBase):
         else:
             return None
 
+
     def __get_lens(self):
         lens = []
 
         for i in range(len(self.combination_matrix)):
             sums  = 0
-            for k in self.combination_matrix[i]:
-                for z in self.variable_types[i]:
-                    sums+=k
+            for k in range(len(self.combination_matrix[i])):
+                sums+=self.combination_matrix[i][k] * len(self.variable_types[k])
             lens.append(sums)
-        return lens
+        return list(lens)
+    

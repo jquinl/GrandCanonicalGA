@@ -10,7 +10,6 @@ from ..CoreUtils.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
 
 
 from .OperationsBase import OperationsBase
@@ -32,3 +31,30 @@ class MutationsBase(OperationsBase):
     @abstractmethod
     def mutate(self, a1):
         pass
+
+    def _check_index_overlaps(self,index,atoms,blmin):
+        index_overlaps = []
+        indices = np.array([ a for a in np.arange(len(atoms))])
+        for i in indices:
+            if(index != i):
+                if(not self._check_overlap(atoms[i],atoms[index],blmin[(atoms[i].number,atoms[index].number)])):
+                    index_overlaps.append(i)
+        return list(index_overlaps)
+
+    def _displace(self,index,overlap_indices,atoms):
+        if(len(overlap_indices) == 0): return
+        displacement_vector  = np.zeros(3)
+        for i in overlap_indices:
+            displacement_vector += atoms[index].position - atoms[i].position
+        
+        atoms[index].position += -displacement_vector
+    """
+    def _check_overlap_all_atoms(self,atoms,blmin):
+        indices = np.array([ a for a in np.arange(len(atoms))])
+        for i in indices:
+            for j in indices:
+                if(i != j):
+                    if(not self._check_overlap(atoms[i],atoms[j],blmin[(atoms[i].number,atoms[j].number)])):
+                        return True
+        return False"""
+    

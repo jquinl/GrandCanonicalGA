@@ -49,6 +49,9 @@ class Population:
 
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
+        if(len(compatoms) == 0): 
+            self.confid += 1
+            return self.confid
         for at in compatoms:
             if self.get_similarity(atoms, at):
                 return at.info['key_value_pairs']['confid']

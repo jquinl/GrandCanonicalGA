@@ -5,10 +5,11 @@ from GCGA.CoreUtils.Population import Population
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
-"""from GCGA.Operations.AddOperation import AddOperation as AD
-from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.PermutationOperation import PermutationOperation as PM
-from GCGA.Operations.RattleOperation import RattleOperation as RT"""
+from GCGA.Operations.RattleOperation import RattleOperation as RT
+from GCGA.Operations.RemoveOperation import RemoveOperation as RM
+from GCGA.Operations.AddOperation import AddOperation as AD
+
 
 import numpy as np
 from ase.io import write, Trajectory
@@ -28,7 +29,7 @@ class GCGA:
                 fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
                 starting_population = 10,population_size = 20,population_size_even = False,
-                stoichiometry_weight = True,similarity_penalty = False,calculator = EMT(),
+                calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
                 ):
@@ -60,12 +61,6 @@ class GCGA:
 
         self.pop_size = population_size
         self.starting_population = starting_population
-        self.wt = stoichiometry_weight
-        self.pts = similarity_penalty
-        if(not stoichiometry_weight and similarity_penalty):
-            print("Similarity penalty is marked true but stoichiometry weight is not. Currently only similarity penalty is not supported so sotichiometry weight will be marked true")
-            self.wt = True
-            self.pts = True
 
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
         self.crossing_operator =self.__cross_to_instance(crossing_operator)
@@ -129,15 +124,15 @@ class GCGA:
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,CO):
                 return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
-            """  if issubclass(isClass,AD):
-                return AD(self.slab,self.atomic_types,self.atomic_ranges)
-            if issubclass(isClass,RM):
-                return RM(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,PM):
                 return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if issubclass(isClass,RT):
                 return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-            """
+            if issubclass(isClass,AD):
+                return AD(self.slab,self.atomic_types,self.atomic_ranges)
+            if issubclass(isClass,RM):
+                return RM(self.slab,self.atomic_types,self.atomic_ranges)
+            
             raise TypeError("Provided mutation type is not supported",type(isClass))
     
     def __default_instancing_string(self,isClass):   
@@ -145,15 +140,15 @@ class GCGA:
                 return RCG(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "cross":
                 return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
-            """if isClass == "add":
-                return AD(self.slab,self.atomic_types,self.atomic_ranges)
-            if isClass == "remove":
-                return RM(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "permute":
                 return PM(self.slab,self.atomic_types,self.atomic_ranges)
             if isClass == "rattle":
                 return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-            """
+            if isClass == "add":
+                return AD(self.slab,self.atomic_types,self.atomic_ranges)
+            
+            if isClass == "remove":
+                return RM(self.slab,self.atomic_types,self.atomic_ranges)
             raise TypeError("Provided mutation string is not supported:",isClass)
     
     def __initialize_fitness_function(self,function):
@@ -163,7 +158,6 @@ class GCGA:
         if(isinstance(function,BaseFitness)):
             self.is_fitness_an_object = True
             return function
-        
         raise Exception("Provided function parameter is not a function or a Object derived from the GCGA.FitnessFunction.BaseFitness class")
 
 
@@ -196,7 +190,6 @@ class GCGA:
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
             pop.update_population(atoms)
-            #db.update_to_relaxed(atoms,similarity=self.pts)
 
 
         steps = self.steps
@@ -235,14 +228,17 @@ class GCGA:
                         rnd = np.random.rand()
                         mutated = None
                         if(rnd < self.mutation_chance):
-                            ran = range(len(mutations))
+                            ran = list(range(len(mutations)))
                             random.shuffle(ran)
                             for k in ran:
                                 if(mutated == None):
                                     mutated = mutations[k].mutate(res)
                         if(mutated is not None):
+                            
+                            
                             child = mutated.copy()
-                        
+                          # 
+                                                    
                         if child is not None:
                             db.add_unrelaxed_candidate(child)
                             print("Structure evaluation {}".format(counter))
