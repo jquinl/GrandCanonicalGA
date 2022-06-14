@@ -95,9 +95,6 @@ class CrossOperation(CrossBase):
         return ratoms
 
 
-
-        
-
     def get_new_candidate(self,a1,a2):
         a1_copy = a1.copy()
         a2_copy = a2.copy()
@@ -121,17 +118,19 @@ class CrossOperation(CrossBase):
         aout = sorted([i for i in chain(fmap, mmap) if i < 0],
                       reverse=True)
 
-
-        if(len(ain)-max(self.combination_lens) < 0):
-            off = len(ain)-random.choice(self.combination_lens)
-            dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
-            a1_copy.translate(e * dist)
-            a2_copy.translate(-e * dist)
-        elif(len(ain)-min(self.combination_lens) >0):
-            off = len(ain)-random.choice(self.combination_lens)
-            dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
-            a1_copy.translate(e * dist)
-            a2_copy.translate(-e * dist)
+        try:
+            if(len(ain)-min(self.combination_lens) < 0):
+                off = len(ain)-random.choice(self.combination_lens)
+                dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
+                a1_copy.translate(e * dist)
+                a2_copy.translate(-e * dist)
+            elif(len(ain)-max(self.combination_lens) >0):
+                off = len(ain)-random.choice(self.combination_lens)
+                dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
+                a1_copy.translate(e * dist)
+                a2_copy.translate(-e * dist)
+        except:
+            pass
         
 
         fmap = [np.dot(x, e) for x in a1_copy.get_positions()]

@@ -189,6 +189,8 @@ class GCGA:
             else:    
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
+            self.append_to_file(atoms)
+
             pop.update_population(atoms)
 
 
@@ -204,7 +206,7 @@ class GCGA:
             succes = False
             subtries = 0
             while(not succes and subtries<3):
-                atomslist = pop.get_better_candidates(n=poprange[subtries])
+                atomslist = pop.get_better_candidates_mix(n=poprange[subtries])
                 
                 subtries +=1
 
@@ -234,10 +236,7 @@ class GCGA:
                                 if(mutated == None):
                                     mutated = mutations[k].mutate(res)
                         if(mutated is not None):
-                            
-                            
                             child = mutated.copy()
-                          # 
                                                     
                         if child is not None:
                             db.add_unrelaxed_candidate(child)
@@ -254,6 +253,9 @@ class GCGA:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
                 else:    
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+           
+                self.append_to_file(atoms)
+
                 pop.update_population(atoms)
 
         atomslist = db.get_better_candidates_raw(max_num=True)
@@ -290,7 +292,7 @@ class GCGA:
         if(results is not None):
             calc_sp = SinglePointCalculator(atoms, **results)
             atoms.set_calculator(calc_sp)
-            self.append_to_file(atoms)
+            #self.append_to_file(atoms)
             return atoms
         else:
             return None

@@ -1,12 +1,13 @@
 from ase.ga.standard_comparators import InteratomicDistanceComparator
 from math import tanh, sqrt, exp
+import numpy as np
 class Population:
     def __init__(self, population_size, database_interface):
         self.pop_size = population_size
         self.dbi = database_interface
         self.pop = []
+        self.pop_stc = []
         self.confid = 0
-
     
     def update_population(self,atoms):
         isSimilar = False
@@ -36,8 +37,21 @@ class Population:
             
         
         self.pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
+
+        if(len(self.pop_stc) == 0):
+            self.pop_stc.append(atoms)
+        else:
+            stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
+            if(atoms.info['key_value_pairs']['var_stc'] not in stcs):
+                self.pop_stc.append(atoms)
+            else:
+                for i in range(len(self.pop_stc)):
+                    if(self.pop_stc[i].info['key_value_pairs']['var_stc'] == atoms.info['key_value_pairs']['var_stc'] and
+                    atoms.info['key_value_pairs']['raw_score']>self.pop_stc[i].info['key_value_pairs']['raw_score'] ):
+                        self.pop_stc[i] = atoms
+                        
         self.dbi.update_to_relaxed(atoms)
-    
+
     def refresh_populations(self):
         ids = [x.info['key_value_pairs']['dbid'] for x in self.pop]
         self.pop = []
@@ -46,7 +60,11 @@ class Population:
 
         self.pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
 
-
+        ids = [x.info['key_value_pairs']['dbid'] for x in self.pop_stc]
+        self.pop_stc = []
+        for i in ids:
+            self.pop_stc.append(self.dbi.get_atoms_from_id(i))
+    
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
         if(len(compatoms) == 0): 
@@ -78,6 +96,7 @@ class Population:
 
              
         """
+        n = max(n,2)
         self.refresh_populations()
 
         "How many times the same stoichiometry appears in the run"
@@ -86,9 +105,7 @@ class Population:
         max_score = max(raw_scores)
         min_score = min(raw_scores)
 
-        atoms = []
-        for at in self.pop:
-            atoms.append(at.copy())
+        atoms = [at.copy() for at in self.pop]
 
         T = min_score - max_score
 
@@ -98,17 +115,17 @@ class Population:
             1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
             1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
 
-        """elif(weighted and not structure_similarity):
-            atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-             1.0/sqrt(1.0+self.__times_paired(x.info['key_value_pairs']['var_stc'])) *
-             1.0/sqrt(1.0+x.info['key_value_pairs']['parent_penalty']),reverse = True)
-        elif(not weighted and not structure_similarity):
-            atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))),reverse = True)
-        """
-
         
         if(len(atoms)>n):
             return list(atoms[:n])
         else:
             return list(atoms[:len(atoms)-1])
-        
+    
+    def get_better_candidates_mix(self,n=2):
+        atomslist = self.get_better_candidates(n)
+        stcs = set([i.info['key_value_pairs']['var_stc'] for i in self.pop])
+        cands = [a for a in self.pop_stc if a.info['key_value_pairs']['var_stc'] not in stcs]
+        if(len(self.pop_stc) > 1):
+            if(np.random.rand() < (float(len(cands))/float(len(stcs)))/float(len(self.pop_stc))):
+                atomslist[0] = cands[np.random.randint(len(cands))]
+        return atomslist
