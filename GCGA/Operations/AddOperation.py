@@ -18,10 +18,6 @@ class AddOperation(MutationsBase):
     def mutate(self, a1):
         super().mutate(a1)
 
-        debug = []
-        debug.append(a1.copy())
-
-
         resulting_lens = []
         smallest_diff = 100
         for i in range(len(self.combination_lens)):
@@ -61,8 +57,6 @@ class AddOperation(MutationsBase):
             var_id = self.get_var_id(return_atoms)
             if(var_id is not None):
                 return_atoms.info['stc']= var_id
-                debug.append(return_atoms)
-                write('addOperation.traj',debug)
                 return return_atoms
             else:
                 raise Exception("Provided atomic combination is not present in combination matrix")

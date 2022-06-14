@@ -7,9 +7,8 @@ from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
 
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
-"""from GCGA.Operations.AddOperation import AddOperation as AD
+from GCGA.Operations.AddOperation import AddOperation as AD
 
-"""
 from GCGA.FitnessFunction.BaseFitness import GibbsFreeEnergy
 
 from ase import Atoms
@@ -65,9 +64,7 @@ candidateGenerator = RCG(slab,variable_types,variable_range,max_bond_lenght_mult
 crossing = CO(slab,variable_types,variable_range,minfrac = 0.2)
 permutating = PM(slab,variable_types,variable_range)
 removing = RM(slab,variable_types,variable_range)
-
-"""adding = AD(slab,variable_types,variable_range)
-"""
+adding = AD(slab,variable_types,variable_range)
 rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.1)
 # Once instantiated, they have to be added to a tuple. A second tuple containing the chances of occurrence of each mutation if the crossing fails
 # (Ideally, the sum of mutations must be equal to 1.0)
@@ -75,8 +72,9 @@ rattling = RT(slab,variable_types,variable_range,n_to_move= 2,rattle_strength=0.
 #Supported mutations are  "random", "cross", "add", "remove", "permute" and "rattle"
 # The types can be passed as:
 
-mutations = ["random",permutating,rattling]
-mutations = ["random","permute","rattle","remove","add"]#,candidateGenerator]#AD,removing,"permute",rattling]
+#mutations = [candidateGenerator,permutating,rattling,removing,adding]
+mutations = [RCG,PM,RT,RM,AD]
+#mutations = ["random","permute","rattle","remove","add"]
 chances = 0.3
 
 #Instantiating of the GCGA object with the selected parameters
