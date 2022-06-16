@@ -9,10 +9,12 @@ from GCGA.Operations.PermutationOperation import PermutationOperation as PM
 from GCGA.Operations.RattleOperation import RattleOperation as RT
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.AddOperation import AddOperation as AD
+from GCGA.Operations.PrepareForDB import PrepareForDB as PDB
+
 
 
 import numpy as np
-from ase.io import write, Trajectory
+from ase.io import read,write, Trajectory
 from os import path
 
 "Supported calculators"
@@ -29,9 +31,11 @@ class GCGA:
                 fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
                 starting_population = 10,population_size = 20,population_size_even = False,
+
                 calculator = EMT(),
                 initial_structure_generator = RCG, crossing_operator = CO, 
                 steps = 1000,maxtries = 10000,
+                restart=False,restart_filename=None
                 ):
 
         self.calc = calculator
@@ -68,6 +72,8 @@ class GCGA:
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
 
+        self.restart = restart
+        self.restart_filename = restart_filename
         
         
 
@@ -168,9 +174,32 @@ class GCGA:
         mutations = self.mutation_operations
         population = self.starting_population
 
-        #Here start population if size is smaller than pop size fill it w random structures
+        
+        #Here start population if size is smaller than pop size fill 
+        # it w random structures
 
         pop = Population(self.pop_size,db)
+
+
+        if(self.restart and self.restart_filename is not None):
+
+            restart_pop = self.restart_run()
+            if(restart_pop is not None):
+
+                for atoms in restart_pop:
+                    db.add_unrelaxed_candidate(atoms)
+                    atoms = db.get_first_unrelaxed()
+                    
+                    if(self.is_fitness_an_object):
+                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+                    else:    
+                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+                    
+                    
+                    
+                    self.append_to_file(atoms)
+                    pop.update_population(atoms)
+                    
         #--------------------------------Generate initial population---------------------------------"
         starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
 
@@ -266,8 +295,23 @@ class GCGA:
         if(self.trajfile is not None):
             self.trajfile.write(atoms)
 
+    def restart_run(self):
+        
+
+        atomslist = list(read(self.restart_filename + "@:"))
+        if(not isinstance(atomslist,list)): return None
+        pdb = PDB(self.slab,self.atomic_types,self.atomic_ranges,self.crossing_operator.ratio_of_covalent_radii,self.crossing_operator.rng)
+        returnatoms = []
+        for atoms in atomslist:
+            if(isinstance(atoms.calc,SinglePointCalculator)):
+                returnatoms.append(pdb.prepare(atoms))
+        if(len(returnatoms) == 0): return None
+        if(len(returnatoms) != len(atoms)): print("Not all atoms in {} were included in the run".format(self.restart_filename))
+        return list(returnatoms)
+
     def relax(self,atoms):
         results = None
+            
         if(isinstance(self.calc,EMT)):
             atoms.set_calculator( self.calc)
             dyn = BFGS(atoms, trajectory=None, logfile=None)
@@ -275,7 +319,7 @@ class GCGA:
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
             results = {'energy': E,'forces': F}
-        if(isinstance(self.calc,LAMMPSlib)):
+        elif(isinstance(self.calc,LAMMPSlib)):
             try:
                 atoms.set_calculator(self.calc)
                 E = atoms.get_potential_energy()

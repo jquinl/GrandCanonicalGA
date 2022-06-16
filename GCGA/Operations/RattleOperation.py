@@ -42,7 +42,7 @@ class RattleOperation(MutationsBase):
 
             displaced_atoms = []
             while len(displaced_atoms) != n_moved:
-                pos = self.rng.randint(0,len(a1)-1)
+                pos = self.rng.randint(0,len(a1))
                 if(pos not in displaced_atoms):
                     displaced_atoms.append(pos)
 

@@ -2,7 +2,7 @@ from asyncore import read
 from ase.io import read
 import matplotlib.pyplot as plt
 
-atoms = read("structures.traj@:")
+atoms = read("structures_-1.0.traj@:")
 lenergy = 1000.0
 num = 0
 nums = []

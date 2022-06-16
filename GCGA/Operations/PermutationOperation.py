@@ -38,10 +38,10 @@ class PermutationOperation(MutationsBase):
         # Run until a valid pairing is made or maxcount pairings are tested.
         while counter < maxcount:
             counter += 1
-            i1 = self.rng.randint(0,len(indices)-1)
-            i2 = self.rng.randint(0,len(indices)-1)
+            i1 = self.rng.randint(0,len(indices))
+            i2 = self.rng.randint(0,len(indices))
             while(a1[indices[i1]].number == a1[indices[i2]].number):
-                i2 = self.rng.randint(0,len(indices)-1)
+                i2 = self.rng.randint(0,len(indices))
             
             ind1 = indices[i1]
             ind2 = indices[i2]

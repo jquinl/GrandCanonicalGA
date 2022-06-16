@@ -29,7 +29,7 @@ class DataBaseInterface:
         except KeyError:
             raise Exception("No dbid Parameter found in fetched atoms")
     
-        
+
     def update_to_relaxed(self, atoms):
         try:
             atoms.info['key_value_pairs']['dbid']
@@ -50,6 +50,7 @@ class DataBaseInterface:
         
         self.db.update(atoms.info['key_value_pairs']['dbid'],atoms=atoms,relaxed = True,raw_score = atoms.info['key_value_pairs']['raw_score'],
             parent_penalty = 0,confid = atoms.info['key_value_pairs']['confid'])
+
 
     def update_penalization(self,atoms):
         try:
