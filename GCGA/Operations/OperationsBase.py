@@ -19,7 +19,7 @@ class OperationsBase(ABC):
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random):
+                rng=np.random,gen_box_size = 0.8):
         self.slab = slab
         self.variable_types = self.__get_variable_types(variable_types)
         self.variable_range = self.__get_range(variable_range)
@@ -29,7 +29,7 @@ class OperationsBase(ABC):
         self.rng = rng
 
         self.blmin = self.__set_blmin(slab, variable_types)
-
+        self.p0,self.v1,self.v2,self.v3 = self._get_cell_params(slab,gen_box_size)
 
     def mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)):
@@ -63,7 +63,7 @@ class OperationsBase(ABC):
         return dhash.hexdigest()
 
     def __set_variable_dict(self):
-        symbol_dictionary = {0:0}
+        symbol_dictionary = {}
         if(len(self.variable_range) != len(self.variable_types)): raise ValueError("Variable type list length and variable range list length dont match")
         try:
             for x in range(len(self.combination_matrix)):
@@ -71,7 +71,7 @@ class OperationsBase(ABC):
                 for i in range(len(self.variable_range)):
                     for j in range(self.combination_matrix[x,i]):
                         ats.extend(self.variable_types[i].copy())
-                variable_id = x+1
+                variable_id = x
                 symbol_dictionary[self.atoms_to_hash(ats)] = variable_id
             return symbol_dictionary
 
@@ -170,3 +170,41 @@ class OperationsBase(ABC):
                             (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +
                             (atom1.position[2]-atom2.position[2]) * (atom1.position[2]-atom2.position[2]))
 
+    def _overlaps(self,atoms,atomstoadd,blmin):
+        for at in atoms:
+            for nat in atomstoadd:
+                if(not self._check_overlap(at,nat,blmin[(at.number,nat.number)])):
+                    return True
+        return False
+    
+    def _normalize(self,vector):
+        return vector / np.linalg.norm(vector)
+    def _get_cell_params(self,slab,random_generation_box_size):
+        "Gets cell parameters from inputed slab"
+        if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
+        if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
+
+        pos = slab.get_positions()
+        cell = slab.get_cell()
+        if(len(pos) == 0):
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :] * random_generation_box_size
+            p0 = np.array([0,0,0])
+        else:
+            p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :] * random_generation_box_size
+            v3 = v3-p0
+
+        return p0,v1,v2,v3
+    def _get_lens(self):
+        lens = []
+
+        for i in range(len(self.combination_matrix)):
+            sums  = 0
+            for k in range(len(self.combination_matrix[i])):
+                sums+=self.combination_matrix[i][k] * len(self.variable_types[k])
+            lens.append(sums)
+        return list(lens)

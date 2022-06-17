@@ -8,7 +8,7 @@ class RemoveOperation(MutationsBase):
             rng=np.random,jump_to_any = True):
         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
         
-        self.combination_lens =  self.__get_lens()
+        self.combination_lens =  self._get_lens()
         self.jmp = jump_to_any
 
     def mutate(self, a1):
@@ -93,12 +93,3 @@ class RemoveOperation(MutationsBase):
             for k in range(len(comb)):
                 sums+=comb[k] * len(self.variable_types[k])
             return sums
-    def __get_lens(self):
-        lens = []
-
-        for i in range(len(self.combination_matrix)):
-            sums  = 0
-            for k in range(len(self.combination_matrix[i])):
-                sums+=self.combination_matrix[i][k] * len(self.variable_types[k])
-            lens.append(sums)
-        return list(lens)

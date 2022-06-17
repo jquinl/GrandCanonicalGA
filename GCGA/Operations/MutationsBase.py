@@ -19,8 +19,8 @@ class MutationsBase(OperationsBase):
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-                rng=np.random):
-         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
+                rng=np.random,mut_box_size = 0.8):
+         super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng,gen_box_size=mut_box_size)
 
     @classmethod
     def mutation_class(cls):

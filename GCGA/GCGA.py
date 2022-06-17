@@ -241,11 +241,11 @@ class GCGA:
 
                 ranges = len(atomslist)
                 #Choose two of the most stable structures to pair
-                cand1 = np.random.randint(ranges)
-                cand2 = np.random.randint(ranges)
+                cand1 = 0#np.random.randint(ranges)
+                cand2 = np.random.randint(1,ranges)
                 if(ranges >1):
-                    while cand1 == cand2:
-                        cand2 = np.random.randint(ranges)
+                    
+                    cand2 = np.random.randint(1,ranges)
                 #Mate the particles
                     res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
                     

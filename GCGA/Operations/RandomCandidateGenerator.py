@@ -33,8 +33,7 @@ class RandomCandidateGenerator(MutationsBase):
 
     def __init__(self,slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                     random_generation_box_size = 0.8,rng=np.random,max_bond_lenght_multi=4.0):
-        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
-        self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,random_generation_box_size)
+        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng,mut_box_size=random_generation_box_size)
         self.max_blen = max_bond_lenght_multi
 
     @classmethod
@@ -107,27 +106,7 @@ class RandomCandidateGenerator(MutationsBase):
         else:
             raise Exception("Provided variable number not in range")
 
-    #"Private Methods do not touch"
-    def __get_cell_params(self,slab,random_generation_box_size):
-        "Gets cell parameters from inputed slab"
-        if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
-        if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
 
-        pos = slab.get_positions()
-        cell = slab.get_cell()
-        if(len(pos) == 0):
-            v1 = cell[0, :] * random_generation_box_size
-            v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :] * random_generation_box_size
-            p0 = np.array([0,0,0])
-        else:
-            p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
-            v1 = cell[0, :] * random_generation_box_size
-            v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :] * random_generation_box_size
-            v3 = v3-p0
-
-        return p0,v1,v2,v3
     ############Work In Progress##################
     def __generate(self,slab, atom_numbers, blmin):
         cand = slab.copy()
@@ -163,7 +142,7 @@ class RandomCandidateGenerator(MutationsBase):
                     candidate = random.choice(range(len(cand)))
                     at.position = self.__random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,at.number)])
                 
-                if(not self.__overlaps(cand,newAtoms,blmin)):
+                if(not self._overlaps(cand,newAtoms,blmin)):
                     cand.extend(newAtoms)
                     done = True
                 tries +=1
@@ -173,12 +152,6 @@ class RandomCandidateGenerator(MutationsBase):
         final_atoms.extend(self.sort_atoms_by_type(cand[len(slab):]))
         return final_atoms
 
-    def __overlaps(self,atoms,atomstoadd,blmin):
-        for at in atoms:
-            for nat in atomstoadd:
-                if(not self._check_overlap(at,nat,blmin[(at.number,nat.number)])):
-                    return True
-        return False 
 
     def __random_position_in_box(self):
         return self.p0 + (self.rng.random() * self.v1 + self.rng.random() * self.v2 + self.rng.random() * self.v3)
@@ -189,7 +162,7 @@ class RandomCandidateGenerator(MutationsBase):
         while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
             new_vec = self.rng.normal(size=3)
 
-        norm = self.__normalize(new_vec)
+        norm = self._normalize(new_vec)
 
         unif = self.rng.uniform(distance,distance*self.max_blen)
         norm *= unif
@@ -200,8 +173,7 @@ class RandomCandidateGenerator(MutationsBase):
         
         return pos
 
-    def __normalize(self,vector):
-        return vector / np.linalg.norm(vector)
+
 
     
     

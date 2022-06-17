@@ -9,9 +9,9 @@ class AddOperation(MutationsBase):
 
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
             rng=np.random,max_bond_multiplier = 2.0,jump_to_any = True,addition_box_size = 0.8):
-        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng)
-        self.p0,self.v1,self.v2,self.v3 = self.__get_cell_params(slab,addition_box_size)
-        self.combination_lens =  self.__get_lens()
+        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng,mut_box_size=addition_box_size)
+        
+        self.combination_lens =  self._get_lens()
         self.jmp = jump_to_any
         self.max_blen = max_bond_multiplier
 
@@ -95,44 +95,21 @@ class AddOperation(MutationsBase):
             random.shuffle(additional_atoms)
             for i in newAtoms:
                 candidate = random.choice(range(len(cand)))
-                i.position  = self.__random_position_from_atom(cand[candidate],self.blmin[(cand[candidate].number,i.number)])
+                i.position  = self._random_position_from_atom(cand[candidate],self.blmin[(cand[candidate].number,i.number)])
 
-            if(not self.__overlaps(cand,newAtoms,self.blmin)):
+            if(not self._overlaps(cand,newAtoms,self.blmin)):
                     cand.extend(newAtoms)
                     added = True
         if not added:
             return None
         return cand
 
-    def __get_len(self,comb):
-            sums  = 0
-            for k in range(len(comb)):
-                sums+=comb[k] * len(self.variable_types[k])
-            return sums
-    def __get_lens(self):
-        lens = []
-
-        for i in range(len(self.combination_matrix)):
-            sums  = 0
-            for k in range(len(self.combination_matrix[i])):
-                sums+=self.combination_matrix[i][k] * len(self.variable_types[k])
-            lens.append(sums)
-        return list(lens)
-
-    def __overlaps(self,atoms,atomstoadd,blmin):
-        for at in atoms:
-            for nat in atomstoadd:
-                if(not self._check_overlap(at,nat,blmin[(at.number,nat.number)])):
-                    return True
-        return False
-
-    def __random_position_from_atom(self,atom,distance):
-        
+    def _random_position_from_atom(self,atom,distance):
         new_vec = self.rng.normal(size=3)
         while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
             new_vec = self.rng.normal(size=3)
 
-        norm = self.__normalize(new_vec)
+        norm = self._normalize(new_vec)
 
         unif = self.rng.uniform(distance,distance*self.max_blen)
         norm *= unif
@@ -143,25 +120,4 @@ class AddOperation(MutationsBase):
         
         return pos
 
-    def __normalize(self,vector):
-        return vector / np.linalg.norm(vector)
-    def __get_cell_params(self,slab,random_generation_box_size):
-        "Gets cell parameters from inputed slab"
-        if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
-        if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
-
-        pos = slab.get_positions()
-        cell = slab.get_cell()
-        if(len(pos) == 0):
-            v1 = cell[0, :] * random_generation_box_size
-            v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :] * random_generation_box_size
-            p0 = np.array([0,0,0])
-        else:
-            p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
-            v1 = cell[0, :] * random_generation_box_size
-            v2 = cell[1, :] * random_generation_box_size
-            v3 = cell[2, :] * random_generation_box_size
-            v3 = v3-p0
-
-        return p0,v1,v2,v3
+    
