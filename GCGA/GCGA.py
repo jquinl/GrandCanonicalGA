@@ -1,7 +1,7 @@
 import random
 import time
-from GCGA.CoreUtils.DataBaseInterface import DataBaseInterface as DBI
-from GCGA.CoreUtils.Population import Population
+from GCGA.Core.DataBaseInterface import DataBaseInterface as DBI
+from GCGA.Core.Population import Population
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
@@ -10,7 +10,6 @@ from GCGA.Operations.RattleOperation import RattleOperation as RT
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.PrepareForDB import PrepareForDB as PDB
-
 
 
 import numpy as np
@@ -235,16 +234,15 @@ class GCGA:
             succes = False
             subtries = 0
             while(not succes and subtries<3):
-                atomslist = pop.get_better_candidates_mix(n=poprange[subtries])
+                atomslist = pop.get_better_candidates_singles(n=poprange[subtries])
                 
                 subtries +=1
 
                 ranges = len(atomslist)
                 #Choose two of the most stable structures to pair
                 cand1 = 0#np.random.randint(ranges)
-                cand2 = np.random.randint(1,ranges)
-                if(ranges >1):
-                    
+                cand2 = 1
+                if(ranges > 1):
                     cand2 = np.random.randint(1,ranges)
                 #Mate the particles
                     res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
@@ -272,7 +270,8 @@ class GCGA:
                             print("Structure evaluation {}".format(counter))
                             
                             counter+=1
-
+                else:
+                    starting_pop = self.initial_structure_generator.get_random_candidate()
             
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()

@@ -89,14 +89,15 @@ class RandomCandidateGenerator(MutationsBase):
 
     def get_starting_population(self,population_size=20,maxiter=None):
         starting_population = []
-        single_population_size = max(1,int(population_size/len(self.combination_matrix)))
+        single_population_size = max(2,int(population_size/len(self.combination_matrix)))
+
         for i in range(len(self.combination_matrix)):
             for j in range(single_population_size):
                 atoms = self.get_candidate_by_number(i,maxiter=maxiter)
                 starting_population.append(atoms)
         return starting_population
 
-    def get_starting_population_single(self,variable_number,population_size=20,maxiter=None,):
+    """def get_starting_population_single(self,variable_number,population_size=20,maxiter=None,):
         starting_population = []
         if(variable_number < len(self.combination_matrix)):
             for j in range(population_size):
@@ -104,7 +105,7 @@ class RandomCandidateGenerator(MutationsBase):
                 starting_population.append(atoms)
             return starting_population
         else:
-            raise Exception("Provided variable number not in range")
+            raise Exception("Provided variable number not in range")"""
 
 
     ############Work In Progress##################

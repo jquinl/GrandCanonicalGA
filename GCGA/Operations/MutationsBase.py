@@ -5,8 +5,7 @@ from turtle import Turtle
 from typing import List, Dict, Any
 import hashlib
 import json
-from ..CoreUtils.NumpyArrayEncoder import NumpyArrayEncoder
-from ..CoreUtils.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
+
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers

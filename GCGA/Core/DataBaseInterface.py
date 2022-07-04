@@ -84,6 +84,13 @@ class DataBaseInterface:
             raise Exception("No var_stc Parameter found in fetched atoms")
         return atoms
 
+    def get_atoms_with_stc(self,stc):
+        ids = self.get_ids_from_stc(stc)
+        if(len(ids) == 0 ): return list([])
+        atoms = []
+        for i in ids:
+            atoms.append(self.get_atoms_from_id(i))
+        return list(atoms)
 
     def get_other_confids_atoms(self,confids):
         popids = []

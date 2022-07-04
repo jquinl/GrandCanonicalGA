@@ -1,4 +1,3 @@
-from curses import pair_content
 from ase.build import connected_indices as con_ind
 from itertools import combinations
 

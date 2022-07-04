@@ -1,13 +1,16 @@
 from ase.ga.standard_comparators import InteratomicDistanceComparator
 from math import tanh, sqrt, exp
+import random
 import numpy as np
 class Population:
     def __init__(self, population_size, database_interface):
         self.pop_size = population_size
         self.dbi = database_interface
         self.pop = []
+        self.pop_single = []
         self.pop_stc = []
         self.confid = 0
+        self.current_stc = 0
     
     def update_population(self,atoms):
         isSimilar = False
@@ -37,7 +40,6 @@ class Population:
             
         
         self.pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
-
         if(len(self.pop_stc) == 0):
             self.pop_stc.append(atoms)
         else:
@@ -49,8 +51,38 @@ class Population:
                     if(self.pop_stc[i].info['key_value_pairs']['var_stc'] == atoms.info['key_value_pairs']['var_stc'] and
                     atoms.info['key_value_pairs']['raw_score']>self.pop_stc[i].info['key_value_pairs']['raw_score'] ):
                         self.pop_stc[i] = atoms
-                        
+        
+
+        stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
+
         self.dbi.update_to_relaxed(atoms)
+
+        if(self.current_stc not in stcs):
+            self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
+            self.refresh_singles(self.current_stc)
+        if(self.should_change_stc()):
+            if(np.random.random() < 0.33):
+                random.shuffle(stcs)
+                self.refresh_singles(stcs[0])
+                self.current_stc = stcs[0]
+            else:
+                if(self.current_stc is not self.pop_stc[0].info['key_value_pairs']['var_stc']):
+                    self.refresh_singles(self.pop_stc[0].info['key_value_pairs']['var_stc'])
+                    self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
+                else:
+                    if(len(stcs)>1):
+                        self.refresh_singles(self.pop_stc[1].info['key_value_pairs']['var_stc'])
+                        self.current_stc = self.pop_stc[1].info['key_value_pairs']['var_stc']
+        
+    def should_change_stc(self):
+        if(len(self.pop_single) < 2):
+            return True
+        if(self.get_similarity(self.pop_single[0],self.pop_single[1])):
+            return True
+        if (np.random.random() < (0.2 / abs(self.pop_single[0].info['key_value_pairs']['raw_score'] - self.pop_single[1].info['key_value_pairs']['raw_score']))):
+            return True
+        return False
+        
 
     def refresh_populations(self):
         ids = [x.info['key_value_pairs']['dbid'] for x in self.pop]
@@ -65,6 +97,17 @@ class Population:
         for i in ids:
             self.pop_stc.append(self.dbi.get_atoms_from_id(i))
     
+    def refresh_singles(self,stc):
+        new_pop =  self.dbi.get_atoms_with_stc(stc)
+        
+        new_pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
+        if(len(new_pop) < self.pop_size):
+            self.pop_single = new_pop
+        else:
+            self.pop_single = new_pop[:self.pop_size]
+    
+    
+
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
         if(len(compatoms) == 0): 
@@ -84,6 +127,42 @@ class Population:
         if comp.looks_like(a1,a2): return True
         return False
 
+    def get_better_candidates_singles(self,n = 2):
+        """Calculates the fitness using the formula from
+            L.B. Vilhelmsen et al., JACS, 2012, 134 (30), pp 12807-12816
+            Applied to the fitness function instead of the energy of the particles
+
+           Pulls from a population containing a single stoichiometry
+
+             
+        """
+
+        if(len(self.pop_single)<n): return self.get_better_candidates_mix(n)
+
+        n = max(n,2)
+        self.refresh_populations()
+        self.refresh_singles(self.current_stc)
+
+  
+        
+        raw_scores = [ x.info['key_value_pairs']['raw_score'] for x in self.pop_single]
+        max_score = max(raw_scores)
+        min_score = min(raw_scores)
+
+        atoms = [at.copy() for at in self.pop_single]
+
+        T = min_score - max_score
+
+        
+        atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
+            1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
+            1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
+
+        
+        if(len(atoms)>n):
+            return list(atoms[:n])
+        else:
+            return list(atoms[:len(atoms)-1])
 
     def get_better_candidates(self,n=2):
 
