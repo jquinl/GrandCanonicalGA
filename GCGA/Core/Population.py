@@ -52,20 +52,26 @@ class Population:
                     atoms.info['key_value_pairs']['raw_score']>self.pop_stc[i].info['key_value_pairs']['raw_score'] ):
                         self.pop_stc[i] = atoms
         
-
+        self.pop_stc.sort(key=lambda x:x.info['key_value_pairs']['raw_score'],reverse=True)
         stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
-
+        scores = ["{:.1f}".format(i.info['key_value_pairs']['raw_score']) for i in self.pop_stc]
+        scors = ["{:.1f}".format(i.info['key_value_pairs']['raw_score']) for i in self.pop_single]
+        print(stcs)
+        print(scores)
+        print(self.current_stc)
+        print(scors)
         self.dbi.update_to_relaxed(atoms)
 
         if(self.current_stc not in stcs):
             self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
             self.refresh_singles(self.current_stc)
         if(self.should_change_stc()):
-            if(np.random.random() < 0.33):
+            if(np.random.random() < 0.2):
                 random.shuffle(stcs)
                 self.refresh_singles(stcs[0])
                 self.current_stc = stcs[0]
             else:
+                
                 if(self.current_stc is not self.pop_stc[0].info['key_value_pairs']['var_stc']):
                     self.refresh_singles(self.pop_stc[0].info['key_value_pairs']['var_stc'])
                     self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
@@ -79,7 +85,7 @@ class Population:
             return True
         if(self.get_similarity(self.pop_single[0],self.pop_single[1])):
             return True
-        if (np.random.random() < (0.2 / abs(self.pop_single[0].info['key_value_pairs']['raw_score'] - self.pop_single[1].info['key_value_pairs']['raw_score']))):
+        if (np.random.random() < (0.3 / abs(self.pop_single[0].info['key_value_pairs']['raw_score'] - self.pop_single[1].info['key_value_pairs']['raw_score']))):
             return True
         return False
         

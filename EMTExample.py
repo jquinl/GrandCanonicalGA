@@ -55,7 +55,7 @@ slab = Atoms(cell=[a,a,a],
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],[20]]
+variable_range = [[1],list(range(1,21))]
 
 #Indicate mutations to be performed during the run. They can be passes as an instantiated class, as a type or as a string,
 # If passed as type or string, they will be instantiated with default values. A more precisse fine tuning of the run requeres the classes to be preinstantiated when
@@ -84,7 +84,7 @@ calculator = EMT(),
 mutation_chance=chances,
 crossing_operator=crossing,
 initial_structure_generator = candidateGenerator,
-starting_population = 20,population_size=30,steps=1000)
+starting_population = 20,population_size=20,steps=1000)
 
 #Calling the run function will initialize the run
 gcga.run()
