@@ -8,14 +8,13 @@ import json
 import numpy as np
 from ase import Atoms
 from ase.data import atomic_numbers
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
+
 
 from .OperationsBase import OperationsBase
 
 class CrossBase(OperationsBase):
     """
-    Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
-    Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
+    Abstract class for the CrossOver operations, if a different implementation is needed inherit from this and implement the cross method
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random,box_size = 0.8):
@@ -26,7 +25,6 @@ class CrossBase(OperationsBase):
         pass
     def cross_instance(self):
         pass
-
 
     @abstractmethod
     def cross(self, a1,a2):

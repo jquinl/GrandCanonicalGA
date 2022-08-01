@@ -14,8 +14,7 @@ from ase.data import atomic_numbers
 from .OperationsBase import OperationsBase
 class MutationsBase(OperationsBase):
     """
-    Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
-    Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
+    Helper class for the mutation operations, inherits from base OperationsBase, common functionalities and the mutate abstract method, to be implemented.
     """
     def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
                 rng=np.random,mut_box_size = 0.8):
@@ -47,13 +46,5 @@ class MutationsBase(OperationsBase):
             displacement_vector += atoms[index].position - atoms[i].position
         
         atoms[index].position += -displacement_vector
-    """
-    def _check_overlap_all_atoms(self,atoms,blmin):
-        indices = np.array([ a for a in np.arange(len(atoms))])
-        for i in indices:
-            for j in indices:
-                if(i != j):
-                    if(not self._check_overlap(atoms[i],atoms[j],blmin[(atoms[i].number,atoms[j].number)])):
-                        return True
-        return False"""
+
     

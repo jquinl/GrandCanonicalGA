@@ -47,7 +47,7 @@ class GibbsFreeEnergy(BaseFitness):
         fitness = 0.0
         if(slab is not None):
             if(not self.mantains_ordering(slab,atoms)):
-                raise ValueError("Slab atoms")
+                raise ValueError("Slab atoms out of order")
         
         at = atoms[len(slab):]
         indices = at.symbols.indices()
@@ -69,7 +69,7 @@ class GibbsFreeEnergy(BaseFitness):
 
         return -fitness
         
-    def __get_molecule_counts(self,atoms,indices):
+    def __get_molecule_counts(self,atoms):
         atoms_obj = atoms.copy()
         ats = [Atoms(i) for i in self.references.keys()]
         ats.sort(reverse=True,key= lambda x: len(x))

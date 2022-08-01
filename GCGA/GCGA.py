@@ -1,15 +1,25 @@
 import random
 import time
+from typing import List
+from ase import Atoms
+
+from Core.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
+from ase.ga.utilities import closest_distances_generator,get_all_atom_types
+
 from GCGA.Core.DataBaseInterface import DataBaseInterface as DBI
 from GCGA.Core.Population import Population
 from GCGA.FitnessFunction.BaseFitness import BaseFitness
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
-from GCGA.Operations.PermutationOperation import PermutationOperation as PM
-from GCGA.Operations.RattleOperation import RattleOperation as RT
+
 from GCGA.Operations.RemoveOperation import RemoveOperation as RM
 from GCGA.Operations.AddOperation import AddOperation as AD
 from GCGA.Operations.PrepareForDB import PrepareForDB as PDB
+
+from ase.ga.standardmutations import MirrorMutation
+from ase.ga.standardmutations import RattleMutation
+from ase.ga.standardmutations import PermutationMutation
+
 
 
 import numpy as np
@@ -25,7 +35,6 @@ from ase.calculators.lammpslib import LAMMPSlib
 
 class GCGA:
 
-    #similarity_penalty is a Prototype, use with caution, for runs with high number of steps impacts performance significantly"
     def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
                 fitness_function,mutation_chance=0.3,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
@@ -74,8 +83,6 @@ class GCGA:
         self.restart = restart
         self.restart_filename = restart_filename
         
-        
-
     def __initialize_generator(self,gen)-> object:
         try:
             gen.rand_generator()
@@ -165,20 +172,18 @@ class GCGA:
             return function
         raise Exception("Provided function parameter is not a function or a Object derived from the GCGA.FitnessFunction.BaseFitness class")
 
-
     def run(self):
 #---------------------------Define starting population--------------------------------"
         db = DBI(self.db_name)
 
         mutations = self.mutation_operations
         population = self.starting_population
-
+        
         
         #Here start population if size is smaller than pop size fill 
         # it w random structures
 
         pop = Population(self.pop_size,db)
-
 
         if(self.restart and self.restart_filename is not None):
 
@@ -359,3 +364,109 @@ class GCGA:
                 return combiantion_matrix
             except:
                 raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
+
+    def _mantains_ordering(self,atoms):
+        if(len(atoms) < len(self.slab)):
+            return False
+        if(self.slab.symbols.indices() != atoms[:len(self.slab)].symbols.indices()):
+            return False
+
+        return True
+    def _get_var_id(self,atoms) -> int:
+        if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain atomic ordering")
+        if(len(atoms) == len(self.slab)):
+            return self.variable_dict[0]
+        dict = self.atoms_to_hash(atoms[len(self.slab):])
+        if(dict in  self.variable_dict):
+            return self.variable_dict[dict]
+        else:
+            return None
+  
+    def _get_range(self,variable_range) -> List[List[int]]:
+        if isinstance(variable_range,List) and isinstance(variable_range[0],List):
+            for i in range(len(variable_range)):
+                for j in range(len(variable_range[i])):
+                    if(not isinstance(variable_range[i][j],int)):
+                        raise Exception("variable_ range is not al List of List of integers")
+            return variable_range
+        else:
+            raise Exception("variable_range is not al List of List of integers")
+    def _get_variable_types(self,types) -> List[Atoms]:
+        "Gets an atoms object based on user input"
+        if isinstance(types, List):
+            for i in types:
+                if( not isinstance(self.__get_atoms_object(i),Atoms)):
+                    raise ValueError('Cannot parse this element to Atoms object:', i)
+            return types
+        else:
+            raise ValueError('variable_types not a list of atoms objects:', types)
+    
+    def __get_atoms_object(self,atoms) -> Atoms:
+        "Gets an atoms object based on user input"
+        if isinstance(atoms, Atoms):
+            return atoms
+        elif isinstance(atoms, str):
+            return Atoms(atoms)
+        elif isinstance(atoms,List):
+            for i in atoms:
+                if(i not in atomic_numbers.values()):
+                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
+            return Atoms(numbers=atoms)
+        else:
+            raise ValueError('Cannot parse this element:', atoms)
+    def _get_cell_params(self,slab,random_generation_box_size):
+        "Gets cell parameters from inputed slab"
+        if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
+        if(random_generation_box_size > 1.0): raise ValueError("random_generation_box_size too big")
+
+        pos = slab.get_positions()
+        cell = slab.get_cell()
+        if(len(pos) == 0):
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :] * random_generation_box_size
+            p0 = np.array([0,0,0])
+        else:
+            p0 = np.array([0., 0., max(pos[:, 2]) + 2.])
+            v1 = cell[0, :] * random_generation_box_size
+            v2 = cell[1, :] * random_generation_box_size
+            v3 = cell[2, :] * random_generation_box_size
+            v3 = v3-p0
+
+        return p0,v1,v2,v3
+
+    def sort_atoms_by_type(self,atoms):
+        at = Atoms()
+        for i in self.variable_types:
+            for k in i:
+                for j in atoms:
+                    if(k.symbol == j.symbol):
+                        at.extend(j)
+        return at
+
+    def __set_blmin(self,slab, variable_types):
+        uniques = Atoms()
+        for i in variable_types:
+            uniques.extend(i)
+            
+        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
+
+        return closest_distances_generator(atom_numbers=unique_atom_types,
+                                    ratio_of_covalent_radii=self.ratio_of_covalent_radii)
+
+    def is_structure_equal(self,atoms1,atoms2):
+        if(len(atoms1) != len(atoms2)): return False
+        
+        comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
+                pair_cor_max=0.7, mic=True)
+        return comp.looks_like(atoms1,atoms2)
+    
+    def __get_blmin(self,slab, atoms):
+        uniques = Atoms()
+        for i in atoms:
+            if(i.symbol not in [ j.symbol for j in uniques]):
+                uniques.extend(i)
+            
+        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
+
+        return closest_distances_generator(atom_numbers=unique_atom_types)
