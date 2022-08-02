@@ -4,35 +4,27 @@ from ase import Atoms,Atom
 import numpy as np
 from ase.io import write
 
-from .MutationsBase import MutationsBase
-class AddOperation(MutationsBase):
+from GCGA.Operations.OperationsBase import OperationsBase
+class AddOperation(OperationsBase):
 
-    def __init__(self, slab,variable_types,variable_range,ratio_of_covalent_radii=0.7,
-            rng=np.random,max_bond_multiplier = 2.0,jump_to_any = True,addition_box_size = 0.8):
-        super().__init__(slab,variable_types,variable_range,ratio_of_covalent_radii,rng,mut_box_size=addition_box_size)
+    def __init__(self, ratio_of_covalent_radii=0.7,
+            rng=np.random,spread = 2.0,addition_box_size = 0.8):
+        super().__init__(ratio_of_covalent_radii,rng)
         
-        self.combination_lens =  self._get_lens()
-        self.jmp = jump_to_any
-        self.max_blen = max_bond_multiplier
+        self.max_blen = spread
+        self.box_size = addition_box_size
 
-    def mutate(self, a1):
-        super().mutate(a1)
+    @classmethod
+    def add_class(cls):
+        pass
+    def add_instance(self):
+        pass
 
-        resulting_lens = []
-        smallest_diff = 100
-        for i in range(len(self.combination_lens)):
-            if(len(a1[len(self.slab):]) < self.combination_lens[i]):
-                resulting_lens.append(i)
-                smallest_diff = min( smallest_diff, self.combination_lens[i]-len(a1[len(self.slab):]))
 
-        if(len(resulting_lens) == 0): return None
-
-        if (not self.jmp):
-            for i in resulting_lens:
-                resulting_lens = [i for i in resulting_lens if smallest_diff == len(a1[len(self.slab):]) -self.combination_lens[i] ]
+    def add(self,slab, a1,combination,atom_symbols,blmin):
 
         a1_copy = a1.copy()
-        a1_copy = a1_copy[len(self.slab):]
+        a1_copy = a1_copy[len(slab):]
 
         counter = 0
         maxcount = 1000
@@ -40,41 +32,30 @@ class AddOperation(MutationsBase):
         while counter < maxcount:
             counter += 1
 
-            random.shuffle(resulting_lens)
-
-            child = self.add(a1_copy,resulting_lens[0])
+            child = self.add_atoms(slab,a1_copy,combination,atom_symbols,blmin)
 
             if(child is None):
                 continue
             
-            return_atoms = self.slab.copy()
+            return_atoms = slab.copy()
 
-            return_atoms.extend(self.sort_atoms_by_type(child))
+            return_atoms.extend(child)
             
-            if(self._check_overlap_all_atoms(return_atoms,self.blmin)):
+            if(self._check_overlap_all_atoms(return_atoms,blmin)):
                 continue
             
-            var_id = self.get_var_id(return_atoms)
-            if(var_id is not None):
-                return_atoms.info['stc']= var_id
-                return return_atoms
-            else:
-                raise Exception("Provided atomic combination is not present in combination matrix")
+            return return_atoms
 
-    def add(self,atoms,target_comb):
-        combination = None
-        try:
-            combination = self.combination_matrix[target_comb]
-        except:
-            return None
+    def add_atoms(self,slab,atoms,combination,atom_symbols,blmin):
 
-        if(combination is None): return None
-
+        if len(atom_symbols) != len(combination): raise Exception("Different array lengths in combiantion and atom_symbols arrays for the random")
         numbers = []
         
+        p0,v1,v2,v3 = self._get_cell_params(slab,generation_box_size = self.box_size)
+
         for k in range(len(combination)):
             for i in range(combination[k]):
-                numbers.extend(self.variable_types[k].numbers)
+                numbers.extend(atom_symbols[k].numbers)
 
         at_nums = atoms.get_atomic_numbers()
         for i in range(len(numbers)):
@@ -95,29 +76,14 @@ class AddOperation(MutationsBase):
             random.shuffle(additional_atoms)
             for i in newAtoms:
                 candidate = random.choice(range(len(cand)))
-                i.position  = self._random_position_from_atom(cand[candidate],self.blmin[(cand[candidate].number,i.number)])
+                i.position  = self._random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,i.number)],p0,v1,v2,v3)
 
-            if(not self._overlaps(cand,newAtoms,self.blmin)):
+            if(not self._overlaps(cand,newAtoms,blmin)):
                     cand.extend(newAtoms)
                     added = True
         if not added:
             return None
         return cand
 
-    def _random_position_from_atom(self,atom,distance):
-        new_vec = self.rng.normal(size=3)
-        while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
-            new_vec = self.rng.normal(size=3)
-
-        norm = self._normalize(new_vec)
-
-        unif = self.rng.uniform(distance,distance*self.max_blen)
-        norm *= unif
-        pos = atom.position + norm
-        pos[0] = max(min(self.p0[0]+self.v1[0]+self.v2[0]+self.v3[0], pos[0]),self.p0[0])
-        pos[1] = max(min(self.p0[1]+self.v1[1]+self.v2[1]+self.v3[1], pos[1]),self.p0[1])
-        pos[2] = max(min(self.p0[2]+self.v1[2]+self.v2[2]+self.v3[2], pos[2]),self.p0[2])
-        
-        return pos
 
     

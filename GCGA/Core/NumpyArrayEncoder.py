@@ -1,5 +1,4 @@
 import numpy as np
-import json
 from json import JSONEncoder
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):

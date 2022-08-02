@@ -3,26 +3,33 @@ from itertools import count,chain
 import numpy as np
 import random
 from ase import Atoms
-from ase.ga.utilities import (closest_distances_generator, get_all_atom_types)
+from ase.io import write
 
-from .CrossBase import CrossBase
-class CrossOperation(CrossBase):
+from GCGA.Operations.OperationsBase import OperationsBase
+class CrossOperation(OperationsBase):
     """
     Modified cross operation found in the Atomic Simulation Environment (ASE) GA package. ga.cutandspliceparing.py
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     random_translation: Applies random translation to both parent structures before mating
     """
     def __init__(self,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.3,minfrac = 0.2,random_translation =False,box_size=0.8,new_atom_spread = 2.0):
+                rng=np.random,stc_change_chance = 0.3,minfrac = 0.2,random_translation =False,generation_box_size=0.8,new_atom_spread = 2.0):
         super().__init__(ratio_of_covalent_radii,rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
-        self.stc_change_chance = stc_change_chance
+        #self.stc_change_chance = stc_change_chance
         self.random_translation = random_translation
         self.max_blen = new_atom_spread
+        self.gen_box_size = generation_box_size
 
-    def cross(self, slab, a1, a2):
-        super().cross( slab,a1,a2)
+    @classmethod
+    def cross_class(cls):
+        pass
+    def cross_instance(self):
+        pass
+
+
+    def cross(self, slab, a1, a2,blmin):
         """Crosses the two atoms objects and returns one"""
         
         #check that a1 and a2 share a cell with initialized slef.slab
@@ -38,8 +45,8 @@ class CrossOperation(CrossBase):
         maxcount = 1000
         a1_copy = a1.copy()
         a2_copy = a2.copy()
-        stcchg = False
-        if(self.rng.random()<self.stc_change_chance): stcchg = True
+        #stcchg = False
+        #if(self.rng.random()<self.stc_change_chance): stcchg = True
 
         while counter < maxcount:
             counter += 1
@@ -51,44 +58,24 @@ class CrossOperation(CrossBase):
             if child is None:
                 continue
 
+            
             atoms  = slab.copy()
-            atoms.extend(self.sort_atoms_by_type(child))
-            if self._check_overlap_all_atoms(atoms, self.blmin):
+            atoms.extend(child)
+            if self._check_overlap_all_atoms(atoms, blmin):
                 continue
             atoms.wrap()
-            var_id = self.get_var_id(atoms)
+            if self._check_overlap_all_atoms(atoms, blmin):
+                continue
             
-
-            if(var_id is None):
-                new_ats = self.reassign_atoms(atoms[len(slab):])
-                if(new_ats is None):
-                    continue
-                atoms  = slab.copy()
-                atoms.extend(new_ats)
-            if(var_id != a1.info['key_value_pairs']['var_stc'] and stcchg == False):
-                
-                cand = self.add(atoms[len(slab):],a1.info['key_value_pairs']['var_stc'])
-                atoms  = slab.copy()
-                atoms.extend(cand)
-
-
-            if self._check_overlap_all_atoms(atoms, self.__get_blmin(slab,)):
+            if(not self._compare_stc(slab,a1_copy,child)):
                 continue
-            var_id = self.get_var_id(atoms)
-            
-            if(var_id is None):
-                continue
-            if(var_id != a1.info['key_value_pairs']['var_stc'] and stcchg == False):
-                continue
-            print(var_id)
-            print(a1.info['key_value_pairs']['var_stc'])
-            atoms.info['stc']= var_id
+
             
             return atoms
 
         return None
 
-
+  
     def get_new_candidate(self,slab,a1,a2):
         a1_copy = a1.copy()
         a2_copy = a2.copy()
@@ -113,12 +100,12 @@ class CrossOperation(CrossBase):
                       reverse=True)
 
         try:
-            if(len(ain)-min(len(a1),len(a2)) < 0):
+            if(len(ain)-len(a1) < 0):
                 off = len(ain)-random.choice([len(a1),len(a2)])
                 dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
                 a1_copy.translate(e * dist)
                 a2_copy.translate(-e * dist)
-            elif(len(ain)-max(len(a1),len(a2)) >0):
+            elif(len(ain)-len(a1) >0):
                 off = len(ain)-random.choice([len(a1),len(a2)])
                 dist = (abs(aout[abs(off) - 1]) + abs(aout[abs(off)])) * .5
                 a1_copy.translate(e * dist)
@@ -144,12 +131,19 @@ class CrossOperation(CrossBase):
 
         ratoms = Atoms()
         ratoms.set_cell(slab.get_cell())
+        
         ratoms.extend(tmpf)
         ratoms.extend(tmpm)
         if(len(ratoms) == 0): return None
         ratoms.translate(cm)
 
+        tmpm.set_cell(slab.get_cell())
+        tmpf.set_cell(slab.get_cell())
+        tmpm.translate(cm)
+        tmpf.translate(cm)
+        write("cross.traj",[tmpf,tmpm,ratoms])
         return ratoms
+
 
 
     def __get_minfrac(self,minfrac):
@@ -161,7 +155,7 @@ class CrossOperation(CrossBase):
         else:
             return None
 
-    def add(self,atoms,target_comb):
+    """def add(self,atoms,target_comb,blmin):
         combination = None
         try:
             combination = self.combination_matrix[target_comb]
@@ -195,28 +189,12 @@ class CrossOperation(CrossBase):
             random.shuffle(additional_atoms)
             for i in newAtoms:
                 candidate = random.choice(range(len(cand)))
-                i.position  = self._random_position_from_atom(cand[candidate],self.blmin[(cand[candidate].number,i.number)])
+                i.position  = self._random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,i.number)])
 
-            if(not self._overlaps(cand,newAtoms,self.blmin)):
+            if(not self._overlaps(cand,newAtoms,blmin)):
                     cand.extend(newAtoms)
                     added = True
         if not added:
             return None
-        return cand
-#
-    def _random_position_from_atom(self,atom,distance):
-        new_vec = self.rng.normal(size=3)
-        while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
-            new_vec = self.rng.normal(size=3)
-
-        norm = self._normalize(new_vec)
-
-        unif = self.rng.uniform(distance,distance*self.max_blen)
-        norm *= unif
-        pos = atom.position + norm
-        pos[0] = max(min(self.p0[0]+self.v1[0]+self.v2[0]+self.v3[0], pos[0]),self.p0[0])
-        pos[1] = max(min(self.p0[1]+self.v1[1]+self.v2[1]+self.v3[1], pos[1]),self.p0[1])
-        pos[2] = max(min(self.p0[2]+self.v1[2]+self.v2[2]+self.v3[2], pos[2]),self.p0[2])
-        
-        return pos
+        return cand"""
 

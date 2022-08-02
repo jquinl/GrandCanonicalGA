@@ -1,32 +1,31 @@
+from itertools import combinations
+from operator import ge
 import random
-import time
-from typing import List
-from ase import Atoms
-
-from Core.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
-from ase.ga.utilities import closest_distances_generator,get_all_atom_types
-
-from GCGA.Core.DataBaseInterface import DataBaseInterface as DBI
-from GCGA.Core.Population import Population
-from GCGA.FitnessFunction.BaseFitness import BaseFitness
-from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
-from GCGA.Operations.CrossOperation import CrossOperation as CO
-
-from GCGA.Operations.RemoveOperation import RemoveOperation as RM
-from GCGA.Operations.AddOperation import AddOperation as AD
-from GCGA.Operations.PrepareForDB import PrepareForDB as PDB
-
-from ase.ga.standardmutations import MirrorMutation
-from ase.ga.standardmutations import RattleMutation
-from ase.ga.standardmutations import PermutationMutation
-
-
-
+import re
+from typing import List, Dict, Any
+import hashlib
+import json
 import numpy as np
+from ase import Atoms
+from ase.data import atomic_numbers
+from ase.ga.utilities import closest_distances_generator,get_all_atom_types
 from ase.io import read,write, Trajectory
 from os import path
 
-"Supported calculators"
+from GCGA.Core.NumpyArrayEncoder import NumpyArrayEncoder
+from GCGA.Core.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
+
+from GCGA.Core.DataBaseInterface import DataBaseInterface as DBI
+from GCGA.Core.Population import Population
+
+from GCGA.FitnessFunction.BaseFitness import BaseFitness
+
+from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
+from GCGA.Operations.CrossOperation import CrossOperation as CO
+from GCGA.Operations.RemoveOperation import RemoveOperation as RM
+from GCGA.Operations.AddOperation import AddOperation as AD
+
+#---------Supported calculators--------------
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
@@ -35,26 +34,45 @@ from ase.calculators.lammpslib import LAMMPSlib
 
 class GCGA:
 
-    def __init__(self, slab,atomic_types,atomic_ranges,mutation_operations,
-                fitness_function,mutation_chance=0.3,
+    def __init__(self, slab,atomic_types,atomic_ranges,
+                fitness_function,
                 structures_filename = 'structures.traj',db_name = 'databaseGA.db',
-                starting_population = 10,population_size = 20,population_size_even = False,
-
+                starting_candidates_per_stc = 4,population_size = 20,
                 calculator = EMT(),
-                initial_structure_generator = RCG, crossing_operator = CO, 
+                ratio_of_covalent_radii = 0.7,
+                initial_structure_generator = RCG, crossing_operator = CO, addition_operator = AD,removal_operator= RM,
+                mutations = None,mutation_chance=0.3,
                 steps = 1000,maxtries = 10000,
                 restart=False,restart_filename=None
                 ):
 
+        #--------Population settings----------------
         self.calc = calculator
         self.slab = slab
-        self.atomic_types = atomic_types
+        self.atomic_types = self._get_variable_types(atomic_types)
         self.atomic_ranges = atomic_ranges
-        self.mutation_operations, self.mutation_chance = self.__initialize_mutations(mutation_operations,mutation_chance)
-
+        
+        self.combination_matrix = self.__set_combination_matrix()
+        self.stc_dict = self.__set_stc_dict()
         self.is_fitness_an_object = False
         self.fitness_function = self.__initialize_fitness_function(fitness_function)
 
+
+        #--------Population settings----------------
+        self.pop_size = population_size 
+
+        self.starting_candidates = starting_candidates_per_stc
+
+        #--------Operator settings----------------
+        self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
+        self.crossing_operator =self.__initialize_crossing(crossing_operator)
+        self.addition_operator =self.__initialize_adding(addition_operator)
+        self.removal_operator =self.__initialize_removing(removal_operator)
+
+        self.ratio_of_covalent_radii= ratio_of_covalent_radii
+        self.blmin = self.__set_blmin(self.slab, self.atomic_types)
+
+        #--------File Management----------------
         self.db_name = db_name
 
         if isinstance(structures_filename, str):
@@ -66,102 +84,136 @@ class GCGA:
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
             else:
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
-        
-        if(population_size_even):
-            while(len(self.__set_combination_matrix()) % population_size != 0):
-                population_size += 1
 
-        self.pop_size = population_size
-        self.starting_population = starting_population
+        if(mutations is not None):
+            self.mutation_operations, self.mutation_chance = self.__initialize_mutations(None,mutation_chance)
 
-        self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
-        self.crossing_operator =self.__cross_to_instance(crossing_operator)
+        #--------Run length parameters----------------
 
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
 
         self.restart = restart
         self.restart_filename = restart_filename
+
         
+
+#--------Functions only called during initialization---------------
+
+    def _get_variable_types(self,types) -> List[Atoms]:
+        "Gets an atoms object based on user input"
+        if isinstance(types, List):
+            for i in types:
+                if( not isinstance(self.__get_atoms_object(i),Atoms)):
+                    raise ValueError('Cannot parse this element to Atoms object:', i)
+            return types
+        else:
+            raise ValueError('variable_types not a list of atoms objects:', types)
+    
+    def __get_atoms_object(self,atoms) -> Atoms:
+        "Gets an atoms object based on user input"
+        if isinstance(atoms, Atoms):
+            return atoms
+        elif isinstance(atoms, str):
+            return Atoms(atoms)
+        elif isinstance(atoms,List):
+            for i in atoms:
+                if(i not in atomic_numbers.values()):
+                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
+            return Atoms(numbers=atoms)
+        else:
+            raise ValueError('Cannot parse this element:', atoms)
+
+    def __set_combination_matrix(self):
+        if(len(self.atomic_ranges) != len(self.atomic_types)): raise ValueError("Variable type list length and variable range list length dont match")
+        try:
+            lengths = 1
+            lengths_array = []
+            for i in range(len(self.atomic_types)):
+                lengths_array.append(len(self.atomic_ranges[i]))
+                lengths = lengths * len(self.atomic_ranges[i])
+
+            combiantion_matrix  = np.zeros((lengths,len(self.atomic_ranges)),dtype = int)
+
+            for x in range(lengths):
+                for i in range(len(self.atomic_ranges)):
+                    advancement = int(np.prod(lengths_array[i+1:len(self.atomic_ranges)]))
+                    pos = int(x / advancement) % len(self.atomic_ranges[i])
+                    combiantion_matrix[x,i]=self.atomic_ranges[i][pos]
+            return combiantion_matrix
+        except:
+            raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
+
+    def __set_stc_dict(self):
+        symbol_dictionary = {}
+        if(len(self.atomic_ranges) != len(self.atomic_types)): raise ValueError("Variable type list length and variable range list length dont match")
+        try:
+            for x in range(len(self.combination_matrix)):
+                ats = Atoms()
+                for i in range(len(self.atomic_ranges)):
+                    for j in range(self.combination_matrix[x,i]):
+                        ats.extend(self.atomic_types[i].copy())
+                variable_id = x
+                ats = self.sort_atoms_by_type(ats)
+                symbol_dictionary[self.__atoms_to_hash(ats)] = variable_id
+            return symbol_dictionary
+
+        except:
+            raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
+
+    def __dict_hash(self,dictionary: Dict[str, Any]) -> str:
+        dhash = hashlib.sha1()
+        encoded = json.dumps(dictionary, cls=NumpyArrayEncoder,sort_keys=True).encode()
+        dhash.update(encoded)
+        return dhash.hexdigest()
+
+    def __atoms_to_hash(self,atoms):
+        if(not isinstance(atoms,Atoms)):
+            raise ValueError("Tried to hash object of type different than atoms Object")
+        hashed_dict = self.__dict_hash(atoms.symbols.indices())
+        return hashed_dict
+
+
     def __initialize_generator(self,gen)-> object:
         try:
             gen.rand_generator()
-            return gen
+            try:
+                gen.rand_instance()
+                return gen
+            except:
+                return RCG()
         except:
             raise TypeError ("Unssupported Random structure generator")
-
-    def __initialize_mutations(self,mutations,mutation_chance):
-
-        if(not isinstance(mutation_chance,float)):      raise TypeError("Mutation chance is not a float")
-        if(not isinstance(mutations,list)):             raise TypeError("The mutations variable is not a list of mutation operator")
-        if(len(mutations)== 0):                         raise ValueError("The mutations list is empty")
-
-        mut = []
-        for i in mutations:
-            if isinstance(i,str):
-                mut.append( self.__default_instancing_string(i))
-            else:
-                mut.append(self.__mutation_to_instance(i))
-
-        return list(mut),mutation_chance
-
-    def __mutation_to_instance(self,isClass):
+    def __initialize_crossing(self,crs)-> object:
+        try:
+            crs.cross_class()
             try:
-                isClass.mutation_instance()
-                return isClass
+                crs.cross_instance()
+                return crs
             except:
-                try:
-                    isClass.mutation_class()
-                    new_cls = self.__default_instancing(isClass)
-                    new_cls.mutation_instance()
-                    return new_cls
-                except:
-                    raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
-    def __cross_to_instance(self,isClass):
+                return CO()
+        except:
+            raise TypeError ("Unssupported Crossing operator")
+    def __initialize_adding(self,add)-> object:
+        try:
+            add.add_class()
             try:
-                isClass.cross_instance()
-                return isClass
+                add.add_instance()
+                return add
             except:
-                try:
-                    isClass.cross_class()
-                    new_cls = self.__default_instancing(isClass)
-                    new_cls.cross_instance()
-                    return new_cls
-                except:
-                    raise ValueError("Provided class parameter could not be parsed to a mutation operator ")
-
-    def __default_instancing(self,isClass):
-
-            if issubclass(isClass,RCG):
-                return RCG(self.slab,self.atomic_types,self.atomic_ranges)
-            if issubclass(isClass,CO):
-                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
-            if issubclass(isClass,PM):
-                return PM(self.slab,self.atomic_types,self.atomic_ranges)
-            if issubclass(isClass,RT):
-                return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-            if issubclass(isClass,AD):
-                return AD(self.slab,self.atomic_types,self.atomic_ranges)
-            if issubclass(isClass,RM):
-                return RM(self.slab,self.atomic_types,self.atomic_ranges)
-            
-            raise TypeError("Provided mutation type is not supported",type(isClass))
-    
-    def __default_instancing_string(self,isClass):   
-            if isClass == "random":
-                return RCG(self.slab,self.atomic_types,self.atomic_ranges)
-            if isClass == "cross":
-                return CO(self.slab,self.atomic_types,self.atomic_ranges,minfrac=0.2)
-            if isClass == "permute":
-                return PM(self.slab,self.atomic_types,self.atomic_ranges)
-            if isClass == "rattle":
-                return RT(self.slab,self.atomic_types,self.atomic_ranges,n_to_move = 1,rattle_strength = 0.1)
-            if isClass == "add":
-                return AD(self.slab,self.atomic_types,self.atomic_ranges)
-            
-            if isClass == "remove":
-                return RM(self.slab,self.atomic_types,self.atomic_ranges)
-            raise TypeError("Provided mutation string is not supported:",isClass)
+                return AD()
+        except:
+            raise TypeError ("Unssupported Addition operator")
+    def __initialize_removing(self,rmv)-> object:
+        try:
+            rmv.remove_class()
+            try:
+                rmv.remove_instance()
+                return rmv
+            except:
+                return RM()
+        except:
+            raise TypeError ("Unssupported Removing operator")
     
     def __initialize_fitness_function(self,function):
         if(callable(function)):
@@ -172,43 +224,38 @@ class GCGA:
             return function
         raise Exception("Provided function parameter is not a function or a Object derived from the GCGA.FitnessFunction.BaseFitness class")
 
+    def __initialize_mutations(mutation_operations,mutation_chance):
+        return mutation_operations,mutation_chance
+
+    def __set_blmin(slab, variable_types):
+        uniques = Atoms()
+        for i in variable_types:
+            uniques.extend(i)
+            
+        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
+
+        return closest_distances_generator(atom_numbers=unique_atom_types,
+                                    ratio_of_covalent_radii=0.7)
+#--------------------------------------------------------------------------
+
+
+
+#------------Actual run of the EA-------------------------
     def run(self):
-#---------------------------Define starting population--------------------------------"
         db = DBI(self.db_name)
-
-        mutations = self.mutation_operations
-        population = self.starting_population
-        
-        
-        #Here start population if size is smaller than pop size fill 
-        # it w random structures
-
         pop = Population(self.pop_size,db)
+        print(self.starting_candidates)
+        starting_pop = []
+        for i in self.combination_matrix:
+            for j in range(self.starting_candidates):
+                starting_pop.append( self.initial_structure_generator.new_candidate(self.slab,i,self.atomic_types,self.blmin))
 
-        if(self.restart and self.restart_filename is not None):
-
-            restart_pop = self.restart_run()
-            if(restart_pop is not None):
-
-                for atoms in restart_pop:
-                    db.add_unrelaxed_candidate(atoms)
-                    atoms = db.get_first_unrelaxed()
-                    
-                    if(self.is_fitness_an_object):
-                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
-                    else:    
-                        atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-                    
-                    
-                    
-                    self.append_to_file(atoms)
-                    pop.update_population(atoms)
-                    
         #--------------------------------Generate initial population---------------------------------"
-        starting_pop = self.initial_structure_generator.get_starting_population(population_size=population)
+
 
         for i in starting_pop:
-            db.add_unrelaxed_candidate(i)
+            at = self.prepare_candidate(i)
+            db.add_unrelaxed_candidate(at)
 
         #---------------------------------Relax initial structures-----------------------------------"
 
@@ -226,61 +273,33 @@ class GCGA:
 
             pop.update_population(atoms)
 
-
+        #------------Run cycle---------------
         steps = self.steps
         maxtries = self.maxtries
 
         counter = 0
         maxcounter = 0
-        poprange = [2,5,10]
-
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
-            succes = False
-            subtries = 0
-            while(not succes and subtries<3):
-                atomslist = pop.get_better_candidates_singles(n=poprange[subtries])
+            atoms_to_pair = pop.get_better_candidates_singles()
+
+            res = self.crossing_operator.cross(self.slab,atoms_to_pair[0],atoms_to_pair[1],self.blmin)
+            if(res is not None):
+                res = self.prepare_candidate(res)
+
+            if(res is not None):
+                succes = True
+                db.update_penalization(atoms_to_pair[0])
+                db.update_penalization(atoms_to_pair[1])
                 
-                subtries +=1
-
-                ranges = len(atomslist)
-                #Choose two of the most stable structures to pair
-                cand1 = 0#np.random.randint(ranges)
-                cand2 = 1
-                if(ranges > 1):
-                    cand2 = np.random.randint(1,ranges)
-                #Mate the particles
-                    res = self.crossing_operator.cross(atomslist[cand1],atomslist[cand2])
-                    
-                    if(res is not None):
-                        succes = True
-                        db.update_penalization(atomslist[cand1])
-                        db.update_penalization(atomslist[cand2])
-                        child = res.copy()
-
-
-                        rnd = np.random.rand()
-                        mutated = None
-                        if(rnd < self.mutation_chance):
-                            ran = list(range(len(mutations)))
-                            random.shuffle(ran)
-                            for k in ran:
-                                if(mutated == None):
-                                    mutated = mutations[k].mutate(res)
-                        if(mutated is not None):
-                            child = mutated.copy()
-                                                    
-                        if child is not None:
-                            db.add_unrelaxed_candidate(child)
-                            print("Structure evaluation {}".format(counter))
-                            
-                            counter+=1
-                else:
-                    starting_pop = self.initial_structure_generator.get_random_candidate()
+                db.add_unrelaxed_candidate(res)
             
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
+                print("Structure evaluation {}".format(counter))
+                    
+                counter+=1
 
                 if(self.is_fitness_an_object):
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
@@ -295,12 +314,29 @@ class GCGA:
 
         write("sorted_" + self.filename,atomslist)
 
+
+    #---Methos employed during the run---
+    def prepare_candidate(self,atoms):
+        cand = self.slab.copy()
+        
+        ats = self.sort_atoms_by_type(atoms[len(self.slab):])
+        cand.extend(ats)
+
+        if(not self._mantains_ordering(cand)): return None
+        if(self._check_overlap_all_atoms(cand,self.blmin)): return None
+           
+        var_id = self._get_var_id(cand)
+
+        if(var_id is None): return None
+        cand.info['stc']= var_id
+        return cand
+
+
     def append_to_file(self,atoms):
         if(self.trajfile is not None):
             self.trajfile.write(atoms)
 
     def restart_run(self):
-        
 
         atomslist = list(read(self.restart_filename + "@:"))
         if(not isinstance(atomslist,list)): return None
@@ -312,6 +348,7 @@ class GCGA:
         if(len(returnatoms) == 0): return None
         if(len(returnatoms) != len(atoms)): print("Not all atoms in {} were included in the run".format(self.restart_filename))
         return list(returnatoms)
+
 
     def relax(self,atoms):
         results = None
@@ -345,25 +382,7 @@ class GCGA:
         else:
             return None
 
-    def __set_combination_matrix(self):
-            if(len(self.atomic_ranges) != len(self.atomic_types)): raise ValueError("Variable type list length and variable range list length dont match")
-            try:
-                lengths = 1
-                lengths_array = []
-                for i in range(len(self.atomic_types)):
-                    lengths_array.append(len(self.atomic_ranges[i]))
-                    lengths = lengths * len(self.atomic_ranges[i])
 
-                combiantion_matrix  = np.zeros((lengths,len(self.atomic_ranges)),dtype = int)
-
-                for x in range(lengths):
-                    for i in range(len(self.atomic_ranges)):
-                        advancement = int(np.prod(lengths_array[i+1:len(self.atomic_ranges)]))
-                        pos = int(x / advancement) % len(self.atomic_ranges[i])
-                        combiantion_matrix[x,i]=self.atomic_ranges[i][pos]
-                return combiantion_matrix
-            except:
-                raise Exception("Could not generate variable dictionary: Make sure variable type length and variable range length match")
 
     def _mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)):
@@ -372,13 +391,13 @@ class GCGA:
             return False
 
         return True
+    
+    
     def _get_var_id(self,atoms) -> int:
-        if(not self.mantains_ordering(atoms)): raise Exception("Does not mantain atomic ordering")
-        if(len(atoms) == len(self.slab)):
-            return self.variable_dict[0]
-        dict = self.atoms_to_hash(atoms[len(self.slab):])
-        if(dict in  self.variable_dict):
-            return self.variable_dict[dict]
+        if(not self._mantains_ordering(atoms)): raise Exception("Does not mantain atomic ordering")
+        dict = self.__atoms_to_hash(atoms[len(self.slab):])
+        if(dict in  self.stc_dict):
+            return self.stc_dict[dict]
         else:
             return None
   
@@ -391,29 +410,7 @@ class GCGA:
             return variable_range
         else:
             raise Exception("variable_range is not al List of List of integers")
-    def _get_variable_types(self,types) -> List[Atoms]:
-        "Gets an atoms object based on user input"
-        if isinstance(types, List):
-            for i in types:
-                if( not isinstance(self.__get_atoms_object(i),Atoms)):
-                    raise ValueError('Cannot parse this element to Atoms object:', i)
-            return types
-        else:
-            raise ValueError('variable_types not a list of atoms objects:', types)
-    
-    def __get_atoms_object(self,atoms) -> Atoms:
-        "Gets an atoms object based on user input"
-        if isinstance(atoms, Atoms):
-            return atoms
-        elif isinstance(atoms, str):
-            return Atoms(atoms)
-        elif isinstance(atoms,List):
-            for i in atoms:
-                if(i not in atomic_numbers.values()):
-                    raise ValueError('Cannot parse this element {} in :'.format(i),atoms )
-            return Atoms(numbers=atoms)
-        else:
-            raise ValueError('Cannot parse this element:', atoms)
+
     def _get_cell_params(self,slab,random_generation_box_size):
         "Gets cell parameters from inputed slab"
         if(random_generation_box_size < 0.0): raise ValueError("random_generation_box_size negative value")
@@ -437,7 +434,7 @@ class GCGA:
 
     def sort_atoms_by_type(self,atoms):
         at = Atoms()
-        for i in self.variable_types:
+        for i in self.atomic_types:
             for k in i:
                 for j in atoms:
                     if(k.symbol == j.symbol):
@@ -460,13 +457,49 @@ class GCGA:
         comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
                 pair_cor_max=0.7, mic=True)
         return comp.looks_like(atoms1,atoms2)
-    
-    def __get_blmin(self,slab, atoms):
-        uniques = Atoms()
-        for i in atoms:
-            if(i.symbol not in [ j.symbol for j in uniques]):
-                uniques.extend(i)
-            
-        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
 
-        return closest_distances_generator(atom_numbers=unique_atom_types)
+
+
+    def prepare(self, atoms):
+
+            if( not isinstance(atoms.calc,SinglePointCalculator)):
+                return None        
+                    
+            E = atoms.get_potential_energy()
+            F = atoms.get_forces()
+            results = {'energy': E,'forces': F}
+
+            if(results is None):
+                return None
+
+            return_atoms = self.slab.copy()
+
+            return_atoms.extend(self.sort_atoms_by_type(atoms[len(self.slab):]))
+
+            if(self._check_overlap_all_atoms(return_atoms,self.blmin)):
+                return None
+
+            var_id = self.get_var_id(return_atoms)
+
+            if(var_id is None):
+                return None
+
+        
+            calc_sp = SinglePointCalculator(atoms, **results)
+            return_atoms.set_calculator(calc_sp)
+        
+            return_atoms.info['stc']= var_id
+            return return_atoms
+
+    def _check_overlap_all_atoms(self,atoms,blmin):
+        indices = np.array([ a for a in np.arange(len(atoms))])
+        for i in indices:
+            for j in indices:
+                if(i != j):
+                    if(not self._check_overlap(atoms[i],atoms[j],blmin[(atoms[i].number,atoms[j].number)])):
+                        return True
+        return False
+    def _check_overlap(self,atom1,atom2,dist):
+        return dist*dist < ((atom1.position[0]-atom2.position[0]) * (atom1.position[0]-atom2.position[0]) +
+                            (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +
+                            (atom1.position[2]-atom2.position[2]) * (atom1.position[2]-atom2.position[2]))
