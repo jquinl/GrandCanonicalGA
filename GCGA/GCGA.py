@@ -279,20 +279,38 @@ class GCGA:
 
         counter = 0
         maxcounter = 0
+        pop.initialize_population()
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
-            atoms_to_pair = pop.get_better_candidates_singles()
+            if(pop.should_change_stc()):
+                res = None
+                if(np.random.random() < 0.5):   
+                    a1,a2 = pop.get_better_candidates_stc()
+                    subtries = 0
+                    while(res is None and subtries<100 ):
+                        subtries+=1
+                        res = self.crossing_operator.cross(self.slab,a2,a1,self.blmin)
+                        res = self.prepare_candidate(res)
+                else:
+                    pop.target_stc()
 
-            res = self.crossing_operator.cross(self.slab,atoms_to_pair[0],atoms_to_pair[1],self.blmin)
-            if(res is not None):
-                res = self.prepare_candidate(res)
+                if(res is not None):
+                    succes = True
+                    db.add_unrelaxed_candidate(res)
 
-            if(res is not None):
-                succes = True
-                db.update_penalization(atoms_to_pair[0])
-                db.update_penalization(atoms_to_pair[1])
+            else:
+                a1,a2 = pop.get_better_candidates()
+                res = None
+                subtries = 0
+                while(res is None and subtries<100 ):
+                    subtries+=1
+                    res = self.crossing_operator.cross(self.slab,a1,a2,self.blmin)
                 
-                db.add_unrelaxed_candidate(res)
+                    res = self.prepare_candidate(res)
+
+                if(res is not None):
+                    succes = True
+                    db.add_unrelaxed_candidate(res)
             
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
