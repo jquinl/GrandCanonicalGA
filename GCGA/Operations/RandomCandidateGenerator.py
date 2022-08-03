@@ -22,9 +22,8 @@ class RandomCandidateGenerator(OperationsBase):
         the generated structures
     """
 
-    def __init__(self,ratio_of_covalent_radii=0.7,
-                    random_generation_box_size = 0.8,atom_spread=2.0,rng=np.random,):
-        super().__init__(ratio_of_covalent_radii,rng)
+    def __init__(self,random_generation_box_size = 0.8,atom_spread=2.0,rng=np.random):
+        super().__init__(rng)
         self.max_blen = atom_spread
         self.random_generation_box_size = random_generation_box_size
 

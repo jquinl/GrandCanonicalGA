@@ -15,7 +15,7 @@ class Population:
         self.min_stc = 100
 
     def initialize_population(self):
-        self.change_current_stc(self,self.pop_stc[0].info['key_value_pairs']['var_stc'])
+        self.change_current_stc(self.pop_stc[0].info['key_value_pairs']['var_stc'])
 
     def update_population(self,atoms):
         isSimilar = False
@@ -69,7 +69,7 @@ class Population:
             self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
 
     def should_change_stc(self):
-        if(len(self.pop_single) < 2):
+        if(len(self.pop) < 2):
             return True
         if(self.get_similarity(self.pop[0],self.pop[1])):
             return True
@@ -85,8 +85,8 @@ class Population:
                 if(stcs[0]== self.current_stc): return stcs[1]
                 return stcs[0]
         a1,a2  = self.get_better_candidates_stc()
-        if(a1.info['key_value_pairs']['var_sct'] == self.current_stc  ): return a2.info['key_value_pairs']['var_sct']
-        return a1.info['key_value_pairs']['var_sct']
+        if(a1.info['key_value_pairs']['var_stc'] == self.current_stc  ): return a2.info['key_value_pairs']['var_stc']
+        return a1.info['key_value_pairs']['var_stc']
 
     def change_current_stc(self,stc):
         self.current_stc = stc
@@ -116,7 +116,10 @@ class Population:
         self.pop_stc = []
         for i in ids:
             self.pop_stc.append(self.dbi.get_atoms_from_id(i))
-
+    def get_better_candidate(self):
+        self.refresh_populations()
+        atoms = [at.copy() for at in self.pop]
+        return atoms[0]
     def get_better_candidates(self):
         """Calculates the fitness using the formula from
             L.B. Vilhelmsen et al., JACS, 2012, 134 (30), pp 12807-12816

@@ -9,10 +9,7 @@ class OperationsBase(ABC):
     """
     Base class for random generation, crossover, addition, and removal operations, contains some functionalities common to all 
     """
-    def __init__(self, ratio_of_covalent_radii=0.7,
-                rng=np.random):
-            
-        self.ratio_of_covalent_radii = ratio_of_covalent_radii
+    def __init__(self, rng=np.random):
         self.rng = rng
     
     @classmethod

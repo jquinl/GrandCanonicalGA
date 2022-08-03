@@ -4,9 +4,8 @@ import numpy as np
 from GCGA.Operations.OperationsBase import OperationsBase
 class RemoveOperation(OperationsBase):
 
-    def __init__(self,ratio_of_covalent_radii=0.7,
-            rng=np.random):
-        super().__init__(ratio_of_covalent_radii,rng)
+    def __init__(self,rng=np.random):
+        super().__init__(rng)
         
 
     @classmethod

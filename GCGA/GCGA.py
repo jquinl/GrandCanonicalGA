@@ -22,8 +22,7 @@ from GCGA.FitnessFunction.BaseFitness import BaseFitness
 
 from GCGA.Operations.RandomCandidateGenerator import RandomCandidateGenerator as RCG
 from GCGA.Operations.CrossOperation import CrossOperation as CO
-from GCGA.Operations.RemoveOperation import RemoveOperation as RM
-from GCGA.Operations.AddOperation import AddOperation as AD
+from GCGA.Operations.AddRemoveOperation import AddRemoveOperation as CHG
 
 #---------Supported calculators--------------
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -40,7 +39,7 @@ class GCGA:
                 starting_candidates_per_stc = 4,population_size = 20,
                 calculator = EMT(),
                 ratio_of_covalent_radii = 0.7,
-                initial_structure_generator = RCG, crossing_operator = CO, addition_operator = AD,removal_operator= RM,
+                initial_structure_generator = RCG, crossing_operator = CO, stc_change_operator = CHG,
                 mutations = None,mutation_chance=0.3,
                 steps = 1000,maxtries = 10000,
                 restart=False,restart_filename=None
@@ -66,8 +65,7 @@ class GCGA:
         #--------Operator settings----------------
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
         self.crossing_operator =self.__initialize_crossing(crossing_operator)
-        self.addition_operator =self.__initialize_adding(addition_operator)
-        self.removal_operator =self.__initialize_removing(removal_operator)
+        self.change_operator =self.__initialize_change_operator(stc_change_operator)
 
         self.ratio_of_covalent_radii= ratio_of_covalent_radii
         self.blmin = self.__set_blmin(self.slab, self.atomic_types)
@@ -194,26 +192,16 @@ class GCGA:
                 return CO()
         except:
             raise TypeError ("Unssupported Crossing operator")
-    def __initialize_adding(self,add)-> object:
+    def __initialize_change_operator(self,chg)-> object:
         try:
-            add.add_class()
+            chg.chg_class()
             try:
-                add.add_instance()
-                return add
+                chg.chg_instance()
+                return chg
             except:
-                return AD()
+                return CHG()
         except:
             raise TypeError ("Unssupported Addition operator")
-    def __initialize_removing(self,rmv)-> object:
-        try:
-            rmv.remove_class()
-            try:
-                rmv.remove_instance()
-                return rmv
-            except:
-                return RM()
-        except:
-            raise TypeError ("Unssupported Removing operator")
     
     def __initialize_fitness_function(self,function):
         if(callable(function)):
@@ -237,7 +225,6 @@ class GCGA:
         return closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=0.7)
 #--------------------------------------------------------------------------
-
 
 
 #------------Actual run of the EA-------------------------
@@ -287,25 +274,32 @@ class GCGA:
                 if(np.random.random() < 0.5):   
                     a1,a2 = pop.get_better_candidates_stc()
                     subtries = 0
-                    while(res is None and subtries<100 ):
+                    while(res is None and subtries < 100):
                         subtries+=1
                         res = self.crossing_operator.cross(self.slab,a2,a1,self.blmin)
                         res = self.prepare_candidate(res)
                 else:
-                    pop.target_stc()
-
+                    target_stc = pop.target_stc()
+                    a1 = pop.get_better_candidate()
+                    while(res is None and subtries < 100):
+                        subtries+=1
+                        current_stc = a1.info['key_value_pairs']['var_stc']
+                        res = self.change_operator.change(self.slab,a1,self.combination_matrix[current_stc],
+                            self.combination_matrix[target_stc],self.atomic_types,self.blmin)
+                            
+                        res = self.prepare_candidate(res)
                 if(res is not None):
                     succes = True
+                    pop.change_current_stc(res.info['stc'])
                     db.add_unrelaxed_candidate(res)
 
             else:
                 a1,a2 = pop.get_better_candidates()
                 res = None
                 subtries = 0
-                while(res is None and subtries<100 ):
+                while(res is None and subtries < 100):
                     subtries+=1
                     res = self.crossing_operator.cross(self.slab,a1,a2,self.blmin)
-                
                     res = self.prepare_candidate(res)
 
                 if(res is not None):
@@ -335,6 +329,7 @@ class GCGA:
 
     #---Methos employed during the run---
     def prepare_candidate(self,atoms):
+        if(atoms is None ):return None
         cand = self.slab.copy()
         
         ats = self.sort_atoms_by_type(atoms[len(self.slab):])

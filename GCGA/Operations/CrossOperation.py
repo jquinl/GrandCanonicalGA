@@ -12,13 +12,10 @@ class CrossOperation(OperationsBase):
     Modified in order to allow the cut and splice pairing to happen between neighboring stoichiometries
     random_translation: Applies random translation to both parent structures before mating
     """
-    def __init__(self,ratio_of_covalent_radii=0.7,
-                rng=np.random,stc_change_chance = 0.3,minfrac = 0.2,random_translation =False,generation_box_size=0.8,new_atom_spread = 2.0):
-        super().__init__(ratio_of_covalent_radii,rng)
+    def __init__(self,rng=np.random,minfrac = 0.2,generation_box_size=0.8,new_atom_spread = 2.0):
+        super().__init__(rng)
  
         self.minfrac = self.__get_minfrac(minfrac)
-        #self.stc_change_chance = stc_change_chance
-        self.random_translation = random_translation
         self.max_blen = new_atom_spread
         self.gen_box_size = generation_box_size
 
@@ -45,8 +42,6 @@ class CrossOperation(OperationsBase):
         maxcount = 1000
         a1_copy = a1.copy()
         a2_copy = a2.copy()
-        #stcchg = False
-        #if(self.rng.random()<self.stc_change_chance): stcchg = True
 
         while counter < maxcount:
             counter += 1
@@ -57,7 +52,6 @@ class CrossOperation(OperationsBase):
            
             if child is None:
                 continue
-
             
             atoms  = slab.copy()
             atoms.extend(child)
@@ -69,7 +63,6 @@ class CrossOperation(OperationsBase):
             
             if(not self._compare_stc(slab,a1_copy,child)):
                 continue
-
             
             return atoms
 

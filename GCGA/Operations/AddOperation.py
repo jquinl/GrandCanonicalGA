@@ -7,9 +7,8 @@ from ase.io import write
 from GCGA.Operations.OperationsBase import OperationsBase
 class AddOperation(OperationsBase):
 
-    def __init__(self, ratio_of_covalent_radii=0.7,
-            rng=np.random,spread = 2.0,addition_box_size = 0.8):
-        super().__init__(ratio_of_covalent_radii,rng)
+    def __init__(self,rng=np.random,spread = 2.0,addition_box_size = 0.8):
+        super().__init__(rng)
         
         self.max_blen = spread
         self.box_size = addition_box_size
