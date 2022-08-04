@@ -55,7 +55,6 @@ class AddOperation(OperationsBase):
         for k in range(len(combination)):
             for i in range(combination[k]):
                 numbers.extend(atom_symbols[k].numbers)
-
         at_nums = atoms.get_atomic_numbers()
         for i in range(len(numbers)):
             for k in range(len(at_nums)):
@@ -64,24 +63,28 @@ class AddOperation(OperationsBase):
                     numbers[i] = 200
         final_numbers = [i for i in numbers if i!= 200]
         
-        additional_atoms = []
         newAtoms = Atoms(numbers = final_numbers)
+        additional_atoms =[i.index for i in newAtoms] 
 
         tries = 0
         added = False
         cand = None
-        while tries < 10 and added == False:
-            cand = atoms.copy()
-            random.shuffle(additional_atoms)
-            for i in newAtoms:
+        
+        cand = atoms.copy()
+        random.shuffle(additional_atoms)
+        for i in additional_atoms:
+            added = False
+            while(not added and tries<100):
                 candidate = random.choice(range(len(cand)))
-                i.position  = self._random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,i.number)],p0,v1,v2,v3)
+                newAtoms[i].position  = self._random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,newAtoms[i].number)],p0,v1,v2,v3)
 
-            if(not self._overlaps(cand,newAtoms,blmin)):
-                    cand.extend(newAtoms)
-                    added = True
-        if not added:
-            return None
+                if(not self._overlaps(cand,Atoms(numbers = [newAtoms[i].number],positions =[newAtoms[i].position] ),blmin)):
+                    if(not self._overlaps(slab,Atoms(numbers = [newAtoms[i].number],positions =[newAtoms[i].position] ),blmin)):
+                        cand.extend(Atoms(numbers = [newAtoms[i].number],positions =[newAtoms[i].position]))
+                        added = True
+            if(not added):
+                return None
+        
         return cand
 
 

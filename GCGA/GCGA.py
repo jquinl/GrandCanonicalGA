@@ -2,6 +2,7 @@ from itertools import combinations
 from operator import ge
 import random
 import re
+import time
 from typing import List, Dict, Any
 import hashlib
 import json
@@ -93,6 +94,8 @@ class GCGA:
 
         self.restart = restart
         self.restart_filename = restart_filename
+
+        self.evalnum = 0
 
         
 
@@ -229,9 +232,10 @@ class GCGA:
 
 #------------Actual run of the EA-------------------------
     def run(self):
+        self.evalnum = 0
         db = DBI(self.db_name)
         pop = Population(self.pop_size,db)
-        print(self.starting_candidates)
+        
         starting_pop = []
         for i in self.combination_matrix:
             for j in range(self.starting_candidates):
@@ -260,7 +264,14 @@ class GCGA:
 
             pop.update_population(atoms)
 
+        #------------Time-----------------
+        cross_time_total = 0
+        cross_time = 0
+        
+        chg_time_total = 0
+        chg_time = 0
         #------------Run cycle---------------
+
         steps = self.steps
         maxtries = self.maxtries
 
@@ -271,25 +282,28 @@ class GCGA:
             maxcounter += 1
             if(pop.should_change_stc()):
                 res = None
-                if(np.random.random() < 0.5):   
+                if(np.random.random() < 0.0):   
                     a1,a2 = pop.get_better_candidates_stc()
                     subtries = 0
-                    while(res is None and subtries < 100):
+                    while(res is None and subtries < 10):
                         subtries+=1
                         res = self.crossing_operator.cross(self.slab,a2,a1,self.blmin)
                         res = self.prepare_candidate(res)
                 else:
                     target_stc = pop.target_stc()
                     a1 = pop.get_better_candidate()
-                    while(res is None and subtries < 100):
+                    subtries = 0
+
+                    while(res is None and subtries < 10):
                         subtries+=1
                         current_stc = a1.info['key_value_pairs']['var_stc']
                         res = self.change_operator.change(self.slab,a1,self.combination_matrix[current_stc],
                             self.combination_matrix[target_stc],self.atomic_types,self.blmin)
                             
                         res = self.prepare_candidate(res)
+                  
                 if(res is not None):
-                    succes = True
+                 
                     pop.change_current_stc(res.info['stc'])
                     db.add_unrelaxed_candidate(res)
 
@@ -297,11 +311,13 @@ class GCGA:
                 a1,a2 = pop.get_better_candidates()
                 res = None
                 subtries = 0
-                while(res is None and subtries < 100):
+                tm = time.time()
+                while(res is None and subtries < 10):
                     subtries+=1
                     res = self.crossing_operator.cross(self.slab,a1,a2,self.blmin)
                     res = self.prepare_candidate(res)
-
+                cross_time = time.time() -tm
+                cross_time_total += cross_time
                 if(res is not None):
                     succes = True
                     db.add_unrelaxed_candidate(res)
@@ -309,7 +325,6 @@ class GCGA:
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
-                print("Structure evaluation {}".format(counter))
                     
                 counter+=1
 
@@ -325,7 +340,6 @@ class GCGA:
         atomslist = db.get_better_candidates_raw(max_num=True)
 
         write("sorted_" + self.filename,atomslist)
-
 
     #---Methos employed during the run---
     def prepare_candidate(self,atoms):
@@ -390,6 +404,9 @@ class GCGA:
         if(results is not None):
             calc_sp = SinglePointCalculator(atoms, **results)
             atoms.set_calculator(calc_sp)
+            print("Structure number {} evaluated".format(self.evalnum))
+            self.evalnum+=1
+
             #self.append_to_file(atoms)
             return atoms
         else:

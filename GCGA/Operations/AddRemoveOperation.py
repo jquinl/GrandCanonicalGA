@@ -1,4 +1,5 @@
 from audioop import add
+from os import remove
 import random
 from ase import Atoms,Atom
 import numpy as np
@@ -30,13 +31,21 @@ class AddRemoveOperation(OperationsBase):
 
         target_add = []
         target_remove = []
+        add=False
+        rem=False
+
         for i in range(len(current_comb)):
             num = target_combination[i]-current_comb[i]
             if(num>0):
+                add = True
                 target_add.append(current_comb[i]+num)
                 target_remove.append(current_comb[i])
-            else:
+            elif(num<0):
+                rem=True
                 target_remove.append(current_comb[i]+num)
+                target_add.append(current_comb[i])
+            else:
+                target_remove.append(current_comb[i])
                 target_add.append(current_comb[i])
 
         counter = 0
@@ -44,10 +53,13 @@ class AddRemoveOperation(OperationsBase):
         # Run until a valid pairing is made or maxcount pairings are tested.
         while counter < maxcount:
             counter += 1
-            child = self.remove.remove(slab,a1_copy,target_remove,atom_symbols,blmin)
+            child = a1_copy.copy()
+            if(rem):
+                child = self.remove.remove(slab,child,target_remove,atom_symbols,blmin)
             if(child is None):
                 continue
-            child = self.add.add(slab,child,target_remove,atom_symbols,blmin)
+            if(add):
+                child = self.add.add(slab,child,target_add,atom_symbols,blmin)
             if(child is None):
                 continue
             
