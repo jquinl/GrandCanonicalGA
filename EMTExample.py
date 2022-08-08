@@ -1,7 +1,6 @@
 #Import these for the GA code to run
 
 from GCGA.GCGA import GCGA
-
 from GCGA.FitnessFunction.BaseFitness import GibbsFreeEnergy
 
 from ase import Atoms
@@ -47,14 +46,14 @@ slab = Atoms(cell=[a,a,a],
 #---------Generate variable part of the system----------------------"
 #Part of the system that can be relaxed and that varyies in number over the duration of the search"
 variable_types = [Atoms('Pt'),Atoms('Au')]
-variable_range = [[1],list(range(1,21))]
+variable_range = [[1],list(range(20,21))]
 
 
 #Instantiating of the GCGA object with the selected parameters
 gcga = GCGA(slab,variable_types,variable_range,
 gfe,
 calculator = EMT(),
-starting_candidates_per_stc = 2,population_size=20,steps=1000)
+starting_candidates_per_stc = 10,population_size=20,steps=100)
 
 #Calling the run function will initialize the run
 gcga.run()

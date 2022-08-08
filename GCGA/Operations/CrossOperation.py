@@ -121,13 +121,15 @@ class CrossOperation(OperationsBase):
         for atom in a2_copy:
             if np.dot(atom.position, e) < 0:
                 tmpm.append(atom)
-
         ratoms = Atoms()
         ratoms.set_cell(slab.get_cell())
         
         ratoms.extend(tmpf)
         ratoms.extend(tmpm)
         if(len(ratoms) == 0): return None
+        if(self.minfrac > len(tmpf)/len(ratoms)): return None
+        if(self.minfrac > len(tmpm)/len(ratoms)): return None
+
         ratoms.translate(cm)
 
         tmpm.set_cell(slab.get_cell())

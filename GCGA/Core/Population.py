@@ -71,6 +71,7 @@ class Population:
     def should_change_stc(self):
         if(len(self.pop) < 2):
             return True
+        if(len(self.pop_stc)<2):return False
         if(self.get_similarity(self.pop[0],self.pop[1])):
             return True
         if (np.random.random() < (0.1 / abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[1].info['key_value_pairs']['raw_score']))):
@@ -169,11 +170,12 @@ class Population:
             1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
             1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
 
-        self.dbi.update_penalization(atoms[0])
-        self.dbi.update_penalization(atoms[1])
+        
 
         return atoms[0],atoms[1]
-
+    def update_penalization(self,atoms1,atoms2):
+        self.dbi.update_penalization(atoms1)
+        self.dbi.update_penalization(atoms2)
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
         if(len(compatoms) == 0): 

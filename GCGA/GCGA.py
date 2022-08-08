@@ -182,7 +182,7 @@ class GCGA:
                 gen.rand_instance()
                 return gen
             except:
-                return RCG()
+                return RCG(atom_spread = 4.0)
         except:
             raise TypeError ("Unssupported Random structure generator")
     def __initialize_crossing(self,crs)-> object:
@@ -320,8 +320,9 @@ class GCGA:
                 cross_time_total += cross_time
                 if(res is not None):
                     succes = True
+                    pop.update_penalization(a1,a2)
                     db.add_unrelaxed_candidate(res)
-            
+
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
