@@ -13,6 +13,7 @@ class Population:
         self.current_stc = 0
         self.max_stc = 0
         self.min_stc = 100
+        self.pairs = []
 
     def initialize_population(self):
         self.change_current_stc(self.pop_stc[0].info['key_value_pairs']['var_stc'])
@@ -117,11 +118,13 @@ class Population:
         self.pop_stc = []
         for i in ids:
             self.pop_stc.append(self.dbi.get_atoms_from_id(i))
+
     def get_better_candidate(self):
         self.refresh_populations()
         atoms = [at.copy() for at in self.pop]
         return atoms[0]
-    def get_better_candidates(self):
+
+    def _get_fitness(self):
         """Calculates the fitness using the formula from
             L.B. Vilhelmsen et al., JACS, 2012, 134 (30), pp 12807-12816
             Applied to the fitness function instead of the energy of the particles
@@ -138,15 +141,46 @@ class Population:
 
         T = min_score - max_score
 
-        
-        atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-            1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
-            1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
+        fit = []
+        for at in atoms:
+            fit.append((0.5 * (1. - tanh(2. * (at.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
+            1.0/sqrt(1.0 + at.info['key_value_pairs']['parent_penalty']) * 
+            1.0/sqrt(1.0 + self.dbi.confid_count(at.info['key_value_pairs']['confid'])))
+        return fit
 
-        self.dbi.update_penalization(atoms[0])
-        self.dbi.update_penalization(atoms[1])
+    def get_better_candidates(self):
+        fit = self._get_fitness()
+        fmax = max(fit)
+
+        atoms = [at.copy() for at in self.pop]
+
+        c1 = atoms[0]
+        c2 = atoms[0]
+        pairs = (0,0)
+        used_before = False
+        while c1.info['key_value_pairs']['confid'] == c2.info['key_value_pairs']['confid'] and not used_before:
+            nnf = True
+            while nnf:
+                t = np.random.randint(len(atoms))
+                if fit[t] > np.random.rand() * fmax:
+                    c1 = atoms[t]
+                    nnf = False
+            nnf = True
+            while nnf:
+                t = np.random.randint(len(atoms))
+                if fit[t] > np.random.rand() * fmax:
+                    c2 = atoms[t]
+                    nnf = False
+
+            c1id = c1.info['key_value_pairs']['confid']
+            c2id = c2.info['key_value_pairs']['confid']
+            pairs = (min([c1id, c2id]), max([c1id, c2id]))
+            used_before = pairs in self.pairs
         
-        return atoms[0],atoms[1]
+        self.pairs.append(pairs)
+        return c1,c2
+
+
     def get_better_candidates_stc(self):
         """Calculates the fitness using the formula from
             L.B. Vilhelmsen et al., JACS, 2012, 134 (30), pp 12807-12816
@@ -173,9 +207,11 @@ class Population:
         
 
         return atoms[0],atoms[1]
+
     def update_penalization(self,atoms1,atoms2):
         self.dbi.update_penalization(atoms1)
         self.dbi.update_penalization(atoms2)
+        
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
         if(len(compatoms) == 0): 
