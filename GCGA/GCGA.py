@@ -392,8 +392,8 @@ class GCGA:
             try:
                 atoms.set_calculator(self.calc)
                
-                E = atom.get_potential_energy()
-                F = atom.get_forces()
+                E = atoms.get_potential_energy()
+                F = atoms.get_forces()
                 results = {'energy': E,'forces': F}
             except:
                 raise Exception("LAMMPS not installed")
