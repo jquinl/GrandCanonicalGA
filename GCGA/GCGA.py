@@ -395,7 +395,7 @@ class GCGA:
                 for at in atoms:
                     nat = Atom(at.symbol,at.position)
                     calcuated_at += nat
-                
+                calcuated_at.set_calculator(self.calc)
                 E = calcuated_at.get_potential_energy()
                 F = calcuated_at.get_forces()
                 results = {'energy': E,'forces': F}
