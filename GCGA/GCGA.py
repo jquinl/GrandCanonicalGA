@@ -390,14 +390,10 @@ class GCGA:
             results = {'energy': E,'forces': F}
         elif(isinstance(self.calc,LAMMPSlib)):
             try:
-               # atoms.set_calculator(self.calc)
-                calcuated_at= Atom()
-                for at in atoms:
-                    nat = Atom(at.symbol,at.position)
-                    calcuated_at += nat
-                calcuated_at.set_calculator(self.calc)
-                E = calcuated_at.get_potential_energy()
-                F = calcuated_at.get_forces()
+                atoms.set_calculator(self.calc)
+               
+                E = atom.get_potential_energy()
+                F = atom.get_forces()
                 results = {'energy': E,'forces': F}
             except:
                 raise Exception("LAMMPS not installed")
