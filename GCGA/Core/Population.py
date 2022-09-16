@@ -100,7 +100,7 @@ class Population:
             self.pop = new_pop[:self.pop_size]
 
     def get_similarity(self,a1,a2):
-        if(len(a1)!= len(a2)): return False
+        if(a1.info['key_value_pair']['var_stc'] != a1.info['key_value_pair']['var_stc']) :return False
 
         comp = InteratomicDistanceComparator(n_top=len(a1), pair_cor_cum_diff=0.030,
                 pair_cor_max=1.0, dE=0.5, mic=True)
