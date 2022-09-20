@@ -1,7 +1,3 @@
-from itertools import combinations
-from operator import ge
-import random
-import re
 import time
 from typing import List, Dict, Any
 import hashlib
@@ -29,7 +25,7 @@ from GCGA.Operations.AddRemoveOperation import AddRemoveOperation as CHG
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.optimize import BFGS
 from ase.calculators.emt import EMT
-from ase.calculators.lammpslib import LAMMPSlib
+from ase.calculators.lammpsrun import LAMMPS
 
 
 class GCGA:
@@ -388,7 +384,7 @@ class GCGA:
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
             results = {'energy': E,'forces': F}
-        elif(isinstance(self.calc,LAMMPSlib)):
+        elif(isinstance(self.calc,LAMMPS)):
             try:
                 atoms.set_calculator(self.calc)
                
@@ -396,6 +392,7 @@ class GCGA:
                 F = atoms.get_forces()
                 results = {'energy': E,'forces': F}
             except:
+                print(atoms.symbols)
                 raise Exception("LAMMPS not installed")
         else:
             atoms.set_calculator(self.calc)
