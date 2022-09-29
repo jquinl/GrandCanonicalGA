@@ -136,7 +136,6 @@ class CrossOperation(OperationsBase):
         tmpf.set_cell(slab.get_cell())
         tmpm.translate(cm)
         tmpf.translate(cm)
-        write("cross.traj",[tmpf,tmpm,ratoms])
         return ratoms
 
 
@@ -149,47 +148,3 @@ class CrossOperation(OperationsBase):
                 raise ValueError("Specified minfrac value not a float")
         else:
             return None
-
-    """def add(self,atoms,target_comb,blmin):
-        combination = None
-        try:
-            combination = self.combination_matrix[target_comb]
-        except:
-            return None
-
-        if(combination is None): return None
-
-        numbers = []
-        
-        for k in range(len(combination)):
-            for i in range(combination[k]):
-                numbers.extend(self.variable_types[k].numbers)
-
-        at_nums = atoms.get_atomic_numbers()
-        for i in range(len(numbers)):
-            for k in range(len(at_nums)):
-                if(numbers[i] == at_nums[k] and numbers[i] != 200):
-                    at_nums[k] = 200
-                    numbers[i] = 200
-        final_numbers = [i for i in numbers if i!= 200]
-        
-        additional_atoms = []
-        newAtoms = Atoms(numbers = final_numbers)
-
-        tries = 0
-        added = False
-        cand = None
-        while tries < 10 and added == False:
-            cand = atoms.copy()
-            random.shuffle(additional_atoms)
-            for i in newAtoms:
-                candidate = random.choice(range(len(cand)))
-                i.position  = self._random_position_from_atom(cand[candidate],blmin[(cand[candidate].number,i.number)])
-
-            if(not self._overlaps(cand,newAtoms,blmin)):
-                    cand.extend(newAtoms)
-                    added = True
-        if not added:
-            return None
-        return cand"""
-

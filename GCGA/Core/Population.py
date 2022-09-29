@@ -73,9 +73,7 @@ class Population:
         if(len(self.pop) < 2):
             return True
         if(len(self.pop_stc)<2):return False
-        if(self.get_similarity(self.pop[0],self.pop[1])):
-            return True
-        if (np.random.random() < (0.1 / abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[1].info['key_value_pairs']['raw_score']))):
+        if (np.random.random() < (0.1 / abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
             return True
         return False
 
