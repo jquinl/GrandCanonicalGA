@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 import hashlib
 import json
 import numpy as np
+import copy
 from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.utilities import closest_distances_generator,get_all_atom_types
@@ -39,7 +40,7 @@ class GCGA:
                 initial_structure_generator = RCG, crossing_operator = CO, stc_change_operator = CHG,
                 mutations = None,mutation_chance=0.3,
                 steps = 1000,maxtries = 10000,
-                restart=False,restart_filename=None
+                restart=False,restart_filename=None, force_minimization_lammps = True
                 ):
 
         #--------Population settings----------------
@@ -92,7 +93,7 @@ class GCGA:
         self.restart_filename = restart_filename
 
         self.evalnum = 0
-
+        self.forcemin = force_minimization_lammps
         
 
 #--------Functions only called during initialization---------------
@@ -386,10 +387,15 @@ class GCGA:
             results = {'energy': E,'forces': F}
         elif(isinstance(self.calc,LAMMPS)):
             try:
-                atoms.set_calculator(self.calc)
+                lammps_atoms= copy.deepcopy(atoms)
+                lammps_atoms.set_calculator(self.calc)
                
-                E = atoms.get_potential_energy()
-                F = atoms.get_forces()
+                if(self.forcemin):
+                    while(np.amax(np.abs(lammps_atoms.get_forces()))>0.1):
+                        lammps_atoms = copy.deepcopy(lammps_atoms)
+                        lammps_atoms.set_calculator(self.calc)
+                E = lammps_atoms.get_potential_energy()
+                F = lammps_atoms.get_forces()
                 results = {'energy': E,'forces': F}
             except:
                 print(atoms.symbols)
