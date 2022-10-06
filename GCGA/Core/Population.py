@@ -3,7 +3,7 @@ from math import tanh, sqrt, exp
 import random
 import numpy as np
 class Population:
-    def __init__(self, population_size, database_interface):
+    def __init__(self, population_size, database_interface, population_hopping=0.3):
         self.pop_size = population_size
         self.dbi = database_interface
         self.run_stcs = []
@@ -15,6 +15,9 @@ class Population:
         self.min_stc = 100
         self.pairs = []
 
+        self.pop_hop = population_hopping
+        self.stc_atempts = 0
+        self.oldstc = None
     def initialize_population(self):
         self.change_current_stc(self.pop_stc[0].info['key_value_pairs']['var_stc'])
 
@@ -70,11 +73,22 @@ class Population:
             self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
 
     def should_change_stc(self):
+        if(self.oldstc is None):
+            self.oldstc  =  self.current_stc
+        if(self.oldstc  ==  self.current_stc):
+            self.stc_atempts += 1
+        else:
+            self.stc_atempts = 0
+
         if(len(self.pop) < 2):
             return True
         if(len(self.pop_stc)<2):return False
-        if (np.random.random() < (0.1 / abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
+        if (np.random.random() < (self.population_hopping/ abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
             return True
+
+        if(abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']) < 0.01 and self.stc_atempts > 10):
+            return True
+
         return False
 
     def target_stc(self):
