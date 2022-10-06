@@ -16,3 +16,4 @@ test_set/**
 out*
 ffie*
 OperationsTest.py
+plot_run.py
