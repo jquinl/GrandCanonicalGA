@@ -386,11 +386,11 @@ class GCGA:
             results = {'energy': E,'forces': F}
         elif(isinstance(self.calc,LAMMPS)):
             try:
-                lammps_atoms=atoms.copy()
-                lammps_atoms.set_calculator(self.calc)
-               
-                E = lammps_atoms.get_potential_energy()
-                F = lammps_atoms.get_forces()
+                atoms.set_calculator(self.calc)
+                dyn = BFGS(atoms, trajectory=None, logfile=None)
+                dyn.run(fmax=0.05, steps=100)
+                E = atoms.get_potential_energy()
+                F = atoms.get_forces()
                 results = {'energy': E,'forces': F}
             except:
                 print(atoms.symbols)

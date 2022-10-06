@@ -2,6 +2,7 @@
 
 from GCGA.GCGA import GCGA
 from GCGA.FitnessFunction.BaseFitness import GibbsFreeEnergy
+from ase.calculators.lammpsrun import LAMMPS
 
 from ase import Atoms
 import numpy as np
@@ -23,29 +24,16 @@ slab = Atoms(cell=[a,a,a],
 variable_types = [Atoms('Zn'),Atoms('O'),Atoms('H')]
 variable_range = [[1],[1,2,3,4],[1,2]]
 
-
-#Define calculator for LAMMPS
-header = [
-    "units		real",
-    "atom_style	charge"]
-
-masses = {'Zn':65.3900,'O':19.9990,'H':1.0080}
-cmds = [
-    "mass 1 65.3900",
-    "mass 2 15.9990",
-    "mass 3 1.0080",
-    "pair_style	reax/c lmp_control",
-    "pair_coeff	* * ffield.reax.ZnOH H O Zn",
-    "neighbor	2 bin",
-    "neigh_modify	every 10 delay 0 check no",
-    "fix		1 all nve",
-    "fix             2 all qeq/reax 1 0.0 10.0 1e-6 param.qeq",
-    "fix             3 all temp/berendsen 500.0 500.0 100.0",
-    "timestep	0.25",
-    "run		3000"]
-        
-
-lammps = LAMMPSlib(lammps_header = header,lmpcmds=cmds, log_file='test.log')
+#Single point evaluation of the sistem, followed by an optimization with BFGS (Provisional)
+params={"clear":"",
+    "units":"real",
+    "atom_style":"charge",
+    "pair_style": "reaxff NULL",
+    "pair_coeff": ["* * ffield.reax.PdO O Pd"],
+    "fix":["1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff"]
+}
+files = ["ffield.reax.PdO"]
+lammps= LAMMPS(parameters=params, files=files,keep_alive=False)
 
 #Instantiating of the GCGA object with the selected parameters
 gcga = GCGA(slab,variable_types,variable_range,
