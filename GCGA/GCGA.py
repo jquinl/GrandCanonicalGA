@@ -9,7 +9,7 @@ from ase import Atoms
 from ase.data import atomic_numbers
 from ase.ga.utilities import closest_distances_generator,get_all_atom_types
 from ase.io import read,write, Trajectory
-from os import path
+import os
 
 from GCGA.Core.NumpyArrayEncoder import NumpyArrayEncoder
 from GCGA.Core.SubunitAnalysis import NonEnergyInteratomicDistanceComparator
@@ -68,12 +68,10 @@ class GCGA:
         #--------File Management----------------
         self.db_name = db_name
 
-        self.debug = debug
-
         if isinstance(structures_filename, str):
             self.filename = structures_filename
             "This performs a hard overwrite, change it later in order to include restarts"
-            if path.exists(structures_filename):
+            if os.path.exists(structures_filename):
                 self.trajfile = Trajectory(filename=structures_filename, mode='w')
                 self.trajfile.close()
                 self.trajfile = Trajectory(filename=structures_filename, mode='a')
@@ -89,6 +87,12 @@ class GCGA:
         self.restart = restart
         self.restart_filename = restart_filename
         self.evalnum = 0
+
+        self.debug = debug
+        if os.path.exists('debug/'):
+            pass
+        else:
+            os.mkdir('debug')
 
 #--------Functions only called during initialization---------------
     def _get_variable_types(self,types) -> List[Atoms]:
