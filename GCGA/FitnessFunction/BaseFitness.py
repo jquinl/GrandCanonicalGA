@@ -18,7 +18,7 @@ class BaseFitness(ABC):
         if(not isinstance(atoms,Atoms)):
             raise TypeError("Fitness function tried to evaluate something other than an ASE atoms object")
         pass
-    
+
     def mantains_ordering(self,slab,atoms):
         if(len(atoms) < len(slab)):
             return False
@@ -30,7 +30,6 @@ class BaseFitness(ABC):
 class GibbsFreeEnergy(BaseFitness):
 
     supported_environment_variable_types = ["mu"]
-    
     def __init__(self, variable_reference_energies,environmental_variables,base_reference_energy= 0.0):
         super().__init__()
         self.multi_ref = False
@@ -40,7 +39,7 @@ class GibbsFreeEnergy(BaseFitness):
 
         if len(self.references) == 0: raise ValueError("No reference energies found")
         if len(self.env) == 0: raise ValueError("No environmental variables found")
-    
+
     def evaluate(self,slab, atoms) -> float:
         super().evaluate(slab,atoms)
         energy = atoms.get_potential_energy()
@@ -48,7 +47,7 @@ class GibbsFreeEnergy(BaseFitness):
         if(slab is not None):
             if(not self.mantains_ordering(slab,atoms)):
                 raise ValueError("Slab atoms out of order")
-        
+
         at = atoms[len(slab):]
         indices = at.symbols.indices()
         self.__compare_indices_to_ref(indices)
@@ -68,7 +67,7 @@ class GibbsFreeEnergy(BaseFitness):
                 fitness -= (len(indices[i]) * counts[j])
 
         return -fitness
-        
+
     def __get_molecule_counts(self,atoms):
         atoms_obj = atoms.copy()
         ats = [Atoms(i) for i in self.references.keys()]
@@ -117,8 +116,8 @@ class GibbsFreeEnergy(BaseFitness):
         for e,k in env.items():
                 if(not (type(e) == str and type(k) == float)):
                     raise TypeError("environment is not a string:float dictionary")
+
         env_var = []
-    
         for i in env.keys():
             x = i.split("_")
             if(len(x) != 2): raise ValueError("Environment variable: " + x + " Does not follow the rule [var]_[atoms] p.e = mu_CO")

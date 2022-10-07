@@ -12,7 +12,7 @@ class AddRemoveOperation(OperationsBase):
 
     def __init__(self,rng=np.random,spread = 2.0,addition_box_size = 0.8):
         super().__init__(rng)
-        
+
         self.max_blen = spread
         self.box_size = addition_box_size
         self.add = AD(spread=spread,addition_box_size=addition_box_size,rng=rng)
@@ -62,15 +62,10 @@ class AddRemoveOperation(OperationsBase):
                 child = self.add.add(slab,child,target_add,atom_symbols,blmin)
             if(child is None):
                 continue
-            
-            
-            return_atoms = slab.copy()
 
+            return_atoms = slab.copy()
             return_atoms.extend(child)
-            
             if(self._check_overlap_all_atoms(return_atoms,blmin)):
                 continue
-            
-            return return_atoms
 
-   
+            return return_atoms

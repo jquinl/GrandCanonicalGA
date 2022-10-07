@@ -1,3 +1,4 @@
+from distutils.log import debug
 import time
 from typing import List, Dict, Any
 import hashlib
@@ -40,7 +41,7 @@ class GCGA:
                 initial_structure_generator = RCG, crossing_operator = CO, stc_change_operator = CHG,
                 mutations = None,mutation_chance=0.3,
                 steps = 1000,maxtries = 10000,
-                restart=False,restart_filename=None,
+                restart=False,restart_filename=None,debug=False
                 ):
 
         #--------Population settings----------------
@@ -48,28 +49,26 @@ class GCGA:
         self.slab = slab
         self.atomic_types = self._get_variable_types(atomic_types)
         self.atomic_ranges = atomic_ranges
-        
         self.combination_matrix = self.__set_combination_matrix()
         self.stc_dict = self.__set_stc_dict()
         self.is_fitness_an_object = False
         self.fitness_function = self.__initialize_fitness_function(fitness_function)
 
-
         #--------Population settings----------------
         self.pop_size = population_size 
-
         self.starting_candidates = starting_candidates_per_stc
 
         #--------Operator settings----------------
         self.initial_structure_generator = self.__initialize_generator(initial_structure_generator)
         self.crossing_operator =self.__initialize_crossing(crossing_operator)
         self.change_operator =self.__initialize_change_operator(stc_change_operator)
-
         self.ratio_of_covalent_radii= ratio_of_covalent_radii
         self.blmin = self.__set_blmin(self.slab, self.atomic_types)
 
         #--------File Management----------------
         self.db_name = db_name
+
+        self.debug = debug
 
         if isinstance(structures_filename, str):
             self.filename = structures_filename
@@ -85,18 +84,13 @@ class GCGA:
             self.mutation_operations, self.mutation_chance = self.__initialize_mutations(None,mutation_chance)
 
         #--------Run length parameters----------------
-
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
-
         self.restart = restart
         self.restart_filename = restart_filename
-
         self.evalnum = 0
-        
 
 #--------Functions only called during initialization---------------
-
     def _get_variable_types(self,types) -> List[Atoms]:
         "Gets an atoms object based on user input"
         if isinstance(types, List):
@@ -106,7 +100,7 @@ class GCGA:
             return types
         else:
             raise ValueError('variable_types not a list of atoms objects:', types)
-    
+
     def __get_atoms_object(self,atoms) -> Atoms:
         "Gets an atoms object based on user input"
         if isinstance(atoms, Atoms):
@@ -131,7 +125,6 @@ class GCGA:
                 lengths = lengths * len(self.atomic_ranges[i])
 
             combiantion_matrix  = np.zeros((lengths,len(self.atomic_ranges)),dtype = int)
-
             for x in range(lengths):
                 for i in range(len(self.atomic_ranges)):
                     advancement = int(np.prod(lengths_array[i+1:len(self.atomic_ranges)]))
@@ -170,7 +163,6 @@ class GCGA:
         hashed_dict = self.__dict_hash(atoms.symbols.indices())
         return hashed_dict
 
-
     def __initialize_generator(self,gen)-> object:
         try:
             gen.rand_generator()
@@ -181,6 +173,7 @@ class GCGA:
                 return RCG(atom_spread = 4.0)
         except:
             raise TypeError ("Unssupported Random structure generator")
+
     def __initialize_crossing(self,crs)-> object:
         try:
             crs.cross_class()
@@ -191,6 +184,7 @@ class GCGA:
                 return CO()
         except:
             raise TypeError ("Unssupported Crossing operator")
+
     def __initialize_change_operator(self,chg)-> object:
         try:
             chg.chg_class()
@@ -201,7 +195,7 @@ class GCGA:
                 return CHG()
         except:
             raise TypeError ("Unssupported Addition operator")
-    
+
     def __initialize_fitness_function(self,function):
         if(callable(function)):
             self.is_fitness_an_object = False
@@ -218,52 +212,47 @@ class GCGA:
         uniques = Atoms()
         for i in variable_types:
             uniques.extend(i)
-            
         unique_atom_types = get_all_atom_types(slab, uniques.numbers)
-
         return closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=0.7)
-#--------------------------------------------------------------------------
-
 
 #------------Actual run of the EA-------------------------
     def run(self):
         self.evalnum = 0
         db = DBI(self.db_name)
         pop = Population(self.pop_size,db)
-        
         starting_pop = []
         for i in self.combination_matrix:
             for j in range(self.starting_candidates):
-                starting_pop.append( self.initial_structure_generator.new_candidate(self.slab,i,self.atomic_types,self.blmin))
+                new_cand = self.initial_structure_generator.new_candidate(self.slab,i,self.atomic_types,self.blmin)
+                if(self.debug): print("Random structure {0} {1} generated ".format(new_cand.symbols, j))
+                starting_pop.append(new_cand)
 
         #--------------------------------Generate initial population---------------------------------"
-
 
         for i in starting_pop:
             at = self.prepare_candidate(i)
             db.add_unrelaxed_candidate(at)
 
         #---------------------------------Relax initial structures-----------------------------------"
-
+        count = 0
         while db.get_number_of_unrelaxed_candidates() > 0:
 
             atoms = db.get_first_unrelaxed()
-            
             atoms = self.relax(atoms)
             if(self.is_fitness_an_object):
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
-            else:    
+            else:
                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
             self.append_to_file(atoms)
-
             pop.update_population(atoms)
+            if(self.debug): write("debug/random_eval_{}_{}.traj".format(count,atoms.symbols),atoms)
+            count+=1
 
         #------------Time-----------------
         cross_time_total = 0
         cross_time = 0
-        
         chg_time_total = 0
         chg_time = 0
         #------------Run cycle---------------
@@ -276,92 +265,126 @@ class GCGA:
         pop.initialize_population()
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
+            a1=None
+            a2=None
             if(pop.should_change_stc()):
+                tm = time.time()
+                debug_optput = ""
+                if(self.debug):print("--Changing sotichiometry at step {} try {}--".format(counter, maxcounter))
                 res = None
-                if(np.random.random() < 0.0):   
+                if(np.random.random() < 0.0):
+                    if(self.debug):print("----With cross operation")
                     a1,a2 = pop.get_better_candidates_stc()
                     subtries = 0
                     while(res is None and subtries < 10):
-                        subtries+=1
                         res = self.crossing_operator.cross(self.slab,a2,a1,self.blmin)
                         res = self.prepare_candidate(res)
+                        debug_optput += " {}".format(subtries)
+                        subtries+=1
                 else:
+                    if(self.debug):print("----By addition/removal")
                     target_stc = pop.target_stc()
                     a1 = pop.get_better_candidate()
                     subtries = 0
-
                     while(res is None and subtries < 10):
-                        subtries+=1
                         current_stc = a1.info['key_value_pairs']['var_stc']
                         res = self.change_operator.change(self.slab,a1,self.combination_matrix[current_stc],
                             self.combination_matrix[target_stc],self.atomic_types,self.blmin)
-                            
                         res = self.prepare_candidate(res)
-                  
+                        debug_optput += " {}".format(subtries)
+                        subtries+=1
+
+                chg_time = time.time() -tm
+                chg_time_total += chg_time
                 if(res is not None):
-                 
+                    if(self.debug):
+                        stri = "--Stc change SUCCES\n"
+                        stri += "   at attempt {0}\n   New structure symbol {1}\n".format(debug_optput,res.symbols)
+                        stri += "   writen to stc_chg_op_{0}_{1}_{2}.traj\n".format(res.symbols,steps,maxcounter)
+                        stri += "   took {} s".format(chg_time)
+                        print(stri)
+                        if(a2== None):
+                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,res])
+                        else:
+                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,a2,res])
+
                     pop.change_current_stc(res.info['stc'])
                     db.add_unrelaxed_candidate(res)
-
+                else:
+                    if(self.debug):
+                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(steps,maxcounter,chg_time))
             else:
+                debug_optput = ""
                 a1,a2 = pop.get_better_candidates()
                 res = None
                 subtries = 0
                 tm = time.time()
+                if(self.debug):print("--Crossing at step {} try {}".format(counter, maxcounter))
                 while(res is None and subtries < 10):
+                    debug_optput += " {}".format(subtries)
                     subtries+=1
                     res = self.crossing_operator.cross(self.slab,a1,a2,self.blmin)
                     res = self.prepare_candidate(res)
                 cross_time = time.time() -tm
                 cross_time_total += cross_time
                 if(res is not None):
+                    if(self.debug):
+                        stri = "--Crossing operation SUCCES\n"
+                        stri += "   at attempt {0}\n   new structure symbol {1}\n".format(debug_optput,res.symbols)
+                        stri += "   writen to cross_op_{0}_{1}_{2}.traj\n".format(res.symbols,steps,maxcounter)
+                        stri += "   took {} s".format(cross_time)
+                        print(stri)
+                        if(a2== None):
+                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,res])
+                        else:
+                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,a2,res])
+
                     succes = True
                     pop.update_penalization(a1,a2)
                     db.add_unrelaxed_candidate(res)
+                else:
+                    if(self.debug):
+                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(steps,maxcounter,cross_time))
 
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
                 atoms = self.relax(atoms)
-                    
                 counter+=1
-
                 if(self.is_fitness_an_object):
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
-                else:    
+                else:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-           
                 self.append_to_file(atoms)
-
                 pop.update_population(atoms)
+                if(self.debug):
+                    print("New candidate evaluated with a score of {}  at step {} try {}".format(atoms.info['key_value_pairs']['raw_score'],counter,maxcounter))
+                    if(self.debug): write("debug/run_eval_{}_{}.traj".format(counter,maxcounter),atoms)
 
+        print("Exited run loop after {0} steps and {1} tries".format(steps,maxcounter))
+        if(self.debug):print("Crossing operations took a total of {} s:".format(cross_time_total))
         atomslist = db.get_better_candidates_raw(max_num=True)
-
         write("sorted_" + self.filename,atomslist)
 
     #---Methos employed during the run---
     def prepare_candidate(self,atoms):
         if(atoms is None ):return None
         cand = self.slab.copy()
-        
         ats = self.sort_atoms_by_type(atoms[len(self.slab):])
         cand.extend(ats)
 
         if(not self._mantains_ordering(cand)): return None
         if(self._check_overlap_all_atoms(cand,self.blmin)): return None
-           
-        var_id = self._get_var_id(cand)
 
+        var_id = self._get_var_id(cand)
         if(var_id is None): return None
         cand.info['stc']= var_id
         return cand
-
 
     def append_to_file(self,atoms):
         if(self.trajfile is not None):
             self.trajfile.write(atoms)
 
     def restart_run(self):
-
         atomslist = list(read(self.restart_filename + "@:"))
         if(not isinstance(atomslist,list)): return None
         pdb = PDB(self.slab,self.atomic_types,self.atomic_ranges,self.crossing_operator.ratio_of_covalent_radii,self.crossing_operator.rng)
@@ -373,12 +396,17 @@ class GCGA:
         if(len(returnatoms) != len(atoms)): print("Not all atoms in {} were included in the run".format(self.restart_filename))
         return list(returnatoms)
 
-
     def relax(self,atoms):
         results = None
-            
+        stri =  "------------------------------\n"
+        stri += "----Candidate Evaluation----\n"
+        stri += "------------------------------\n"
+        stri += "- Atoms symbol: {}\n".format(atoms.symbols)
+        stri += "- Calculator : {}\n".format(self.calc)
+        c_tm = time.time()
         if(isinstance(self.calc,EMT)):
-            atoms.set_calculator( self.calc)
+            stri += "- Using BFGS optimizer\n"
+            atoms.set_calculator(self.calc)
             dyn = BFGS(atoms, trajectory=None, logfile=None)
             dyn.run(fmax=0.05, steps=100)
             E = atoms.get_potential_energy()
@@ -386,6 +414,7 @@ class GCGA:
             results = {'energy': E,'forces': F}
         elif(isinstance(self.calc,LAMMPS)):
             try:
+                stri += "- Using BFGS optimizer\n"
                 atoms.set_calculator(self.calc)
                 dyn = BFGS(atoms, trajectory=None, logfile=None)
                 dyn.run(fmax=0.05, steps=100)
@@ -393,7 +422,6 @@ class GCGA:
                 F = atoms.get_forces()
                 results = {'energy': E,'forces': F}
             except:
-                print(atoms.symbols)
                 raise Exception("LAMMPS not installed")
         else:
             atoms.set_calculator(self.calc)
@@ -401,28 +429,29 @@ class GCGA:
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
             results = {'energy': E,'forces': F}
+
+        stri += "- Elapsed time: {}\n".format(time.time() - c_tm)
         if(results is not None):
+            stri += "- SUCCESS!\n"
+            stri += "- Evaluated Energy: {}".format(results['energy'])
             calc_sp = SinglePointCalculator(atoms, **results)
             atoms.set_calculator(calc_sp)
-            print("Structure number {} evaluated".format(self.evalnum))
+            if(self.debug): print(stri)
+            print("Structure number {} evaluated\n".format(self.evalnum))
             self.evalnum+=1
-
-            #self.append_to_file(atoms)
             return atoms
         else:
+            stri += "- FAILURE\n"
+            if(self.debug): print(stri)
             return None
-
-
 
     def _mantains_ordering(self,atoms):
         if(len(atoms) < len(self.slab)):
             return False
         if(self.slab.symbols.indices() != atoms[:len(self.slab)].symbols.indices()):
             return False
-
         return True
-    
-    
+
     def _get_var_id(self,atoms) -> int:
         if(not self._mantains_ordering(atoms)): raise Exception("Does not mantain atomic ordering")
         dict = self.__atoms_to_hash(atoms[len(self.slab):])
@@ -430,7 +459,7 @@ class GCGA:
             return self.stc_dict[dict]
         else:
             return None
-  
+
     def _get_range(self,variable_range) -> List[List[int]]:
         if isinstance(variable_range,List) and isinstance(variable_range[0],List):
             for i in range(len(variable_range)):
@@ -459,7 +488,6 @@ class GCGA:
             v2 = cell[1, :] * random_generation_box_size
             v3 = cell[2, :] * random_generation_box_size
             v3 = v3-p0
-
         return p0,v1,v2,v3
 
     def sort_atoms_by_type(self,atoms):
@@ -475,15 +503,13 @@ class GCGA:
         uniques = Atoms()
         for i in variable_types:
             uniques.extend(i)
-            
-        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
 
+        unique_atom_types = get_all_atom_types(slab, uniques.numbers)
         return closest_distances_generator(atom_numbers=unique_atom_types,
                                     ratio_of_covalent_radii=self.ratio_of_covalent_radii)
 
     def is_structure_equal(self,atoms1,atoms2):
         if(len(atoms1) != len(atoms2)): return False
-        
         comp = NonEnergyInteratomicDistanceComparator(n_top=len(atoms1), pair_cor_cum_diff=0.015,
                 pair_cor_max=0.7, mic=True)
         return comp.looks_like(atoms1,atoms2)
@@ -491,33 +517,26 @@ class GCGA:
 
 
     def prepare(self, atoms):
-
             if( not isinstance(atoms.calc,SinglePointCalculator)):
-                return None        
-                    
+                return None
+
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
             results = {'energy': E,'forces': F}
-
             if(results is None):
                 return None
 
             return_atoms = self.slab.copy()
-
             return_atoms.extend(self.sort_atoms_by_type(atoms[len(self.slab):]))
-
             if(self._check_overlap_all_atoms(return_atoms,self.blmin)):
                 return None
 
             var_id = self.get_var_id(return_atoms)
-
             if(var_id is None):
                 return None
 
-        
             calc_sp = SinglePointCalculator(atoms, **results)
             return_atoms.set_calculator(calc_sp)
-        
             return_atoms.info['stc']= var_id
             return return_atoms
 
@@ -529,6 +548,7 @@ class GCGA:
                     if(not self._check_overlap(atoms[i],atoms[j],blmin[(atoms[i].number,atoms[j].number)])):
                         return True
         return False
+
     def _check_overlap(self,atom1,atom2,dist):
         return dist*dist < ((atom1.position[0]-atom2.position[0]) * (atom1.position[0]-atom2.position[0]) +
                             (atom1.position[1]-atom2.position[1]) * (atom1.position[1]-atom2.position[1]) +

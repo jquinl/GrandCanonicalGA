@@ -14,7 +14,7 @@ class CrossOperation(OperationsBase):
     """
     def __init__(self,rng=np.random,minfrac = 0.2,generation_box_size=0.8,new_atom_spread = 2.0):
         super().__init__(rng)
- 
+
         self.minfrac = self.__get_minfrac(minfrac)
         self.max_blen = new_atom_spread
         self.gen_box_size = generation_box_size
@@ -28,7 +28,7 @@ class CrossOperation(OperationsBase):
 
     def cross(self, slab, a1, a2,blmin):
         """Crosses the two atoms objects and returns one"""
-        
+
         #check that a1 and a2 share a cell with initialized slef.slab
         if(slab.get_cell().all() != a1.get_cell().all() or slab.get_cell().all() != a2.get_cell().all() ):
             raise ValueError('Different cell sizes found for slab and inputed structures')
@@ -36,23 +36,19 @@ class CrossOperation(OperationsBase):
         # Only consider the atoms to optimize
         a1 = a1[len(slab) :len(a1)]
         a2 = a2[len(slab) :len(a2)]
-    
 
         counter = 0
         maxcount = 1000
         a1_copy = a1.copy()
         a2_copy = a2.copy()
-
         while counter < maxcount:
             counter += 1
             # Choose direction of cutting plane normal
             # Will be generated entirely at random
-            
             child = self.get_new_candidate(slab,a1_copy, a2_copy)
-           
             if child is None:
                 continue
-            
+
             atoms  = slab.copy()
             atoms.extend(child)
             if self._check_overlap_all_atoms(atoms, blmin):
@@ -60,15 +56,13 @@ class CrossOperation(OperationsBase):
             atoms.wrap()
             if self._check_overlap_all_atoms(atoms, blmin):
                 continue
-            
             if(not self._compare_stc(slab,a1_copy,child)):
                 continue
-            
+
             return atoms
 
         return None
 
-  
     def get_new_candidate(self,slab,a1,a2):
         a1_copy = a1.copy()
         a2_copy = a2.copy()
@@ -82,8 +76,6 @@ class CrossOperation(OperationsBase):
 
         a1_copy.translate(-a1_copy.get_center_of_mass())
         a2_copy.translate(-a2_copy.get_center_of_mass())
-
-
 
         fmap = [np.dot(x, e) for x in a1_copy.get_positions()]
         mmap = [-np.dot(x, e) for x in a2_copy.get_positions()]
@@ -105,7 +97,6 @@ class CrossOperation(OperationsBase):
                 a2_copy.translate(-e * dist)
         except:
             pass
-        
 
         fmap = [np.dot(x, e) for x in a1_copy.get_positions()]
         mmap = [-np.dot(x, e) for x in a2_copy.get_positions()]
@@ -123,7 +114,6 @@ class CrossOperation(OperationsBase):
                 tmpm.append(atom)
         ratoms = Atoms()
         ratoms.set_cell(slab.get_cell())
-        
         ratoms.extend(tmpf)
         ratoms.extend(tmpm)
         if(len(ratoms) == 0): return None
@@ -137,8 +127,6 @@ class CrossOperation(OperationsBase):
         tmpm.translate(cm)
         tmpf.translate(cm)
         return ratoms
-
-
 
     def __get_minfrac(self,minfrac):
         if minfrac is not None:

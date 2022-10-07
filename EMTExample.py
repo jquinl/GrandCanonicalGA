@@ -53,7 +53,7 @@ variable_range = [[1],list(range(5,21))]
 gcga = GCGA(slab,variable_types,variable_range,
 gfe,
 calculator = EMT(),
-starting_candidates_per_stc = 2,population_size=20,steps=100)
+starting_candidates_per_stc = 2,population_size=20,steps=100,debug=True)
 
 #Calling the run function will initialize the run
 gcga.run()

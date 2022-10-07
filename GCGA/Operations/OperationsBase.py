@@ -37,7 +37,7 @@ class OperationsBase(ABC):
                 if(not self._check_overlap(at,nat,blmin[(at.number,nat.number)])):
                     return True
         return False
-    
+
     def _normalize(self,vector):
         return vector / np.linalg.norm(vector)
 
@@ -46,11 +46,11 @@ class OperationsBase(ABC):
         for i in atoms:
             if(i.symbol not in [ j.symbol for j in uniques]):
                 uniques.extend(i)
-            
+
         unique_atom_types = get_all_atom_types(slab, uniques.numbers)
 
         return closest_distances_generator(atom_numbers=unique_atom_types)
-    
+
     def _check_index_overlaps(self,index,atoms,blmin):
         index_overlaps = []
         indices = np.array([ a for a in np.arange(len(atoms))])
@@ -65,7 +65,7 @@ class OperationsBase(ABC):
         displacement_vector  = np.zeros(3)
         for i in overlap_indices:
             displacement_vector += atoms[index].position - atoms[i].position
-        
+
         atoms[index].position += -displacement_vector
 
     def _get_cell_params(self,slab,generation_box_size = 0.8):
@@ -93,7 +93,7 @@ class OperationsBase(ABC):
         return p0 + (self.rng.random() * v1 + self.rng.random() * v2 + self.rng.random() * v3)
 
     def _random_position_from_atom(self,atom,distance,p0,v1,v2,v3):
-        
+
         new_vec = self.rng.normal(size=3)
         while(new_vec[0] == 0.0 and new_vec[1] == 0.0 and new_vec[2] == 0.0):
             new_vec = self.rng.normal(size=3)
@@ -106,7 +106,7 @@ class OperationsBase(ABC):
         pos[0] = max(min(p0[0]+v1[0]+v2[0]+v3[0], pos[0]),p0[0])
         pos[1] = max(min(p0[1]+v1[1]+v2[1]+v3[1], pos[1]),p0[1])
         pos[2] = max(min(p0[2]+v1[2]+v2[2]+v3[2], pos[2]),p0[2])
-        
+
         return pos
     def _compare_stc(self,slab,a1,a2):
         s1 = a1[len(slab):].get_atomic_numbers()

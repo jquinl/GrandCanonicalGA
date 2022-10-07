@@ -6,7 +6,6 @@ class RemoveOperation(OperationsBase):
 
     def __init__(self,rng=np.random):
         super().__init__(rng)
-        
 
     @classmethod
     def remove_class(cls):
@@ -37,19 +36,16 @@ class RemoveOperation(OperationsBase):
                 continue
 
             return return_atoms
-            
-            
 
     def remove_atoms(self,atoms,combination,atom_symbols):
 
         indices = np.array([ a for a in np.arange(len(atoms))])
 
         new_numbers = []
-        
         for k in range(len(combination)):
             for i in range(combination[k]):
                 new_numbers.extend(atom_symbols[k].numbers)
-                    
+
         final_indices = []
         random.shuffle(indices)
         for i in new_numbers:
@@ -59,7 +55,7 @@ class RemoveOperation(OperationsBase):
                     if(i == atoms[j].number):
                         final_indices.append(j)
                         added = True
-        
+
         if(self.__get_len(combination,atom_symbols) != len(new_numbers)): return None
         final_indices = np.array(final_indices)
         return atoms[final_indices].copy()

@@ -23,7 +23,7 @@ class Population:
 
     def update_population(self,atoms):
         isSimilar = False
-        
+
         if(len(self.pop) == 0):
             atoms.info['key_value_pairs']['confid'] =  self.confid
             self.confid += 1
@@ -35,7 +35,7 @@ class Population:
                     atoms.info['key_value_pairs']['confid'] = self.pop[i].info['key_value_pairs']['confid']
                     if(atoms.info['key_value_pairs']['raw_score'] > self.pop[i].info['key_value_pairs']['confid']):
                         self.pop[i] = atoms
-        
+
             if(not isSimilar and len(self.pop) <= self.pop_size):
 
                 atoms.info['key_value_pairs']['confid'] =  self.confid
@@ -49,8 +49,7 @@ class Population:
         else:
             confids = [a.info['key_value_pairs']['confid'] for a in self.pop ]
             atoms.info['key_value_pairs']['confid'] =  self.__check_other_confids(atoms,confids)
-            
-        
+
         self.pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
         if(len(self.pop_stc) == 0):
             self.pop_stc.append(atoms)
@@ -63,7 +62,7 @@ class Population:
                     if(self.pop_stc[i].info['key_value_pairs']['var_stc'] == atoms.info['key_value_pairs']['var_stc'] and
                     atoms.info['key_value_pairs']['raw_score']>self.pop_stc[i].info['key_value_pairs']['raw_score'] ):
                         self.pop_stc[i] = atoms
-        
+
         self.pop_stc.sort(key=lambda x:x.info['key_value_pairs']['raw_score'],reverse=True)
         stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
 
@@ -143,7 +142,7 @@ class Population:
         self.refresh_populations()
 
         "How many times the same stoichiometry appears in the run"
-        
+
         raw_scores = [ x.info['key_value_pairs']['raw_score'] for x in self.pop]
         max_score = max(raw_scores)
         min_score = min(raw_scores)
@@ -187,7 +186,7 @@ class Population:
             c2id = c2.info['key_value_pairs']['confid']
             pairs = (min([c1id, c2id]), max([c1id, c2id]))
             used_before = pairs in self.pairs
-        
+
         self.pairs.append(pairs)
         return c1,c2
 
@@ -215,14 +214,14 @@ class Population:
             1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
             1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
 
-        
+
 
         return atoms[0],atoms[1]
 
     def update_penalization(self,atoms1,atoms2):
         self.dbi.update_penalization(atoms1)
         self.dbi.update_penalization(atoms2)
-        
+
     def __check_other_confids(self,atoms,popconfids):
         compatoms = self.dbi.get_other_confids_atoms(popconfids)
         if(len(compatoms) == 0): 
@@ -233,4 +232,4 @@ class Population:
                 return at.info['key_value_pairs']['confid']
         self.confid += 1
         return self.confid
-        
+

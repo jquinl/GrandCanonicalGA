@@ -32,7 +32,7 @@ class RandomCandidateGenerator(OperationsBase):
         pass
     def rand_instance(self):
         pass
-    
+
 
     def new_candidate(self,slab,combination,atom_symbols,blmin) -> Atoms:
 
@@ -44,16 +44,14 @@ class RandomCandidateGenerator(OperationsBase):
             for j in range(new_atoms[i]):
                 atoms.extend(atom_symbols[i])
 
-    
         if(len(atoms) == 0):
             raise Exception("Empty atoms being generated at random, revise stoichiometies")
         if(len(atoms) == 1):
             return_atoms = atoms.copy()
             return_atoms.set_cell(slab.get_cell())
-            
-        
+
         atoms_numbers  = atoms.numbers
-       
+
         return self.__generate(slab,atom_numbers=atoms_numbers,blmin=blmin)
 
 
@@ -102,12 +100,3 @@ class RandomCandidateGenerator(OperationsBase):
         final_atoms = slab.copy()
         final_atoms.extend(cand[len(slab):])
         return final_atoms
-
-
-
-
-
-
-
-    
-    

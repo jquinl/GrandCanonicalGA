@@ -12,8 +12,6 @@ class SubunitFinder():
 
     @classmethod
     def find_subunits(cls,subunit,atoms,dmax=None,scale=1.5):
-       # if(not issubclass(submolecule, Atoms)): raise TypeError("Passed argument to __submolecule is not an atoms objects")
-        
         symbols = [a.symbol for a in subunit]
 
         symbols.sort()
@@ -27,10 +25,8 @@ class SubunitFinder():
             atree = cls.__traverse_tree(atoms,comb_dict,a,symbols)
             atree.sort()
             clusters.append(atree)
-        
-        clusters = clusters
 
-        
+        clusters = clusters
         clusters = list(set(frozenset(item) for item in clusters))
         atypes = ["H","He","Ni","Pt","Au","Xe","C"]
         counter = 0
@@ -60,7 +56,7 @@ class SubunitFinder():
 
     @classmethod
     def __subdivide_clusters(cls,cluster,atoms,subunit,dmax,scale):
- 
+
         #Gets  unique combinations of the atoms
         nums = subunit.numbers
         nums.sort()
@@ -100,15 +96,14 @@ class SubunitFinder():
                 sub.sort()
                 tst.sort()
                 if(tst != sub): continue
-            
+
             for i in range(len(test_bonds)):
                 if(subunit_bonds[i][2] * scale < test_bonds[i][2]):
                     continue
-           
+
             add_to_accepted = True
             #Check that the accepted combinations are unique (dont share atoms) if they do they prioritize the one with the shortest sum of bond lengths
             for i in range(len(accepted_combinations)):
-              
                 if any(x in accepted_combinations[i] for x in k):
                     sum_new = cls.__total_bond_lenght(k,atoms)
                     sum_old = cls.__total_bond_lenght(accepted_combinations[i],atoms)
@@ -123,7 +118,7 @@ class SubunitFinder():
             if(add_to_accepted):
                 accepted_combinations.append(k)
         return accepted_combinations
-    
+
     @classmethod
     def __bond_type_length(cls,indices,atoms):
         pairs = []
@@ -135,7 +130,7 @@ class SubunitFinder():
                     pairs.append([i,j])
                     total_bond.append([atoms[i].symbol,atoms[j].symbol,atoms.get_distance(i,j)])
         return total_bond
-    
+
     @classmethod
     def __total_bond_lenght(cls,indices,atoms):
         pairs = []
@@ -148,7 +143,6 @@ class SubunitFinder():
                     total_bond_length += atoms.get_distance(i,j)
         return total_bond_length
 class NonEnergyInteratomicDistanceComparator:
-
     """ An implementation of the comparison criteria described in
           L.B. Vilhelmsen and B. Hammer, PRL, 108, 126101 (2012)
 
@@ -218,7 +212,6 @@ class NonEnergyInteratomicDistanceComparator:
 
 
 def get_sorted_d_list(atoms,mic=False):
-    
     unique_bonds = dict()
     unique_comb = dict()
     for i in atoms:
@@ -240,11 +233,4 @@ def get_sorted_d_list(atoms,mic=False):
         bonds.sort()
         sorted_list[i] = np.array(bonds)
 
-
     return sorted_list
-
-    
-        
-                
-
-     
