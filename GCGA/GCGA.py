@@ -304,19 +304,19 @@ class GCGA:
                     if(self.debug):
                         stri = "--Stc change SUCCES\n"
                         stri += "   at attempt {0}\n   New structure symbol {1}\n".format(debug_optput,res.symbols)
-                        stri += "   writen to stc_chg_op_{0}_{1}_{2}.traj\n".format(res.symbols,steps,maxcounter)
+                        stri += "   writen to stc_chg_op_{0}_{1}_{2}.traj\n".format(res.symbols,counter,maxcounter)
                         stri += "   took {} s".format(chg_time)
                         print(stri)
                         if(a2== None):
-                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,res])
+                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,counter,maxcounter),[a1,res])
                         else:
-                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,a2,res])
+                            write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,counter,maxcounter),[a1,a2,res])
 
                     pop.change_current_stc(res.info['stc'])
                     db.add_unrelaxed_candidate(res)
                 else:
                     if(self.debug):
-                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(steps,maxcounter,chg_time))
+                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(counter,maxcounter,chg_time))
             else:
                 debug_optput = ""
                 a1,a2 = pop.get_better_candidates()
@@ -335,20 +335,20 @@ class GCGA:
                     if(self.debug):
                         stri = "--Crossing operation SUCCES\n"
                         stri += "   at attempt {0}\n   new structure symbol {1}\n".format(debug_optput,res.symbols)
-                        stri += "   writen to cross_op_{0}_{1}_{2}.traj\n".format(res.symbols,steps,maxcounter)
+                        stri += "   writen to cross_op_{0}_{1}_{2}.traj\n".format(res.symbols,counter,maxcounter)
                         stri += "   took {} s".format(cross_time)
                         print(stri)
                         if(a2== None):
-                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,res])
+                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,counter,maxcounter),[a1,res])
                         else:
-                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,steps,maxcounter),[a1,a2,res])
+                            write("debug/cross_op_{0}_{1}_{2}.traj".format(res.symbols,counter,maxcounter),[a1,a2,res])
 
                     succes = True
                     pop.update_penalization(a1,a2)
                     db.add_unrelaxed_candidate(res)
                 else:
                     if(self.debug):
-                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(steps,maxcounter,cross_time))
+                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(counter,maxcounter,cross_time))
 
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
@@ -364,7 +364,7 @@ class GCGA:
                     print("New candidate evaluated with a score of {}  at step {} try {}".format(atoms.info['key_value_pairs']['raw_score'],counter,maxcounter))
                     if(self.debug): write("debug/run_eval_{}_{}.traj".format(counter,maxcounter),atoms)
 
-        print("Exited run loop after {0} steps and {1} tries".format(steps,maxcounter))
+        print("Exited run loop after {0} steps and {1} tries".format(counter,maxcounter))
         if(self.debug):print("Crossing operations took a total of {} s:".format(cross_time_total))
         atomslist = db.get_better_candidates_raw(max_num=True)
         write("sorted_" + self.filename,atomslist)
