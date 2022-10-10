@@ -1,4 +1,3 @@
-from distutils.command.config import config
 from pathlib import Path
 from math import tanh, sqrt, exp
 

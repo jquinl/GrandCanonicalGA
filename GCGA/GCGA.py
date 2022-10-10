@@ -1,4 +1,3 @@
-from distutils.log import debug
 import time
 from typing import List, Dict, Any
 import hashlib
@@ -410,7 +409,7 @@ class GCGA:
         c_tm = time.time()
         if(isinstance(self.calc,EMT)):
             stri += "- Using BFGS optimizer\n"
-            atoms.set_calculator(self.calc)
+            atoms.calc = self.calc
             dyn = BFGS(atoms, trajectory=None, logfile=None)
             dyn.run(fmax=0.05, steps=100)
             E = atoms.get_potential_energy()
@@ -419,7 +418,7 @@ class GCGA:
         elif(isinstance(self.calc,LAMMPS)):
             try:
                 stri += "- Using BFGS optimizer\n"
-                atoms.set_calculator(self.calc)
+                atoms.calc = self.calc
                 dyn = BFGS(atoms, trajectory=None, logfile=None)
                 dyn.run(fmax=0.05, steps=100)
                 E = atoms.get_potential_energy()
@@ -428,7 +427,7 @@ class GCGA:
             except:
                 raise Exception("LAMMPS not installed")
         else:
-            atoms.set_calculator(self.calc)
+            atoms.calc = self.calc
             atoms.get_potential_energy()
             E = atoms.get_potential_energy()
             F = atoms.get_forces()
@@ -439,7 +438,7 @@ class GCGA:
             stri += "- SUCCESS!\n"
             stri += "- Evaluated Energy: {}".format(results['energy'])
             calc_sp = SinglePointCalculator(atoms, **results)
-            atoms.set_calculator(calc_sp)
+            atoms.calc = calc_sp
             if(self.debug): print(stri)
             print("Structure number {} evaluated\n".format(self.evalnum))
             self.evalnum+=1
@@ -540,7 +539,7 @@ class GCGA:
                 return None
 
             calc_sp = SinglePointCalculator(atoms, **results)
-            return_atoms.set_calculator(calc_sp)
+            return_atoms.calc =  calc_sp
             return_atoms.info['stc']= var_id
             return return_atoms
 
