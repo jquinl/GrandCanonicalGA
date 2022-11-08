@@ -55,16 +55,20 @@ class GibbsFreeEnergy(BaseFitness):
         if(not self.multi_ref):
             fitness = energy - self.base_ref
             for i,j in indices.items():
-                fitness -=  (self.references[i] * len(j))
+                if(i in self.references):
+                    fitness -=  (self.references[i] * len(j))
             for i,j in self.env[0].items():
-                fitness -= (len(indices[i]) * j)
+                if(i in indices):
+                    fitness -= (len(indices[i]) * j)
         else:
             fitness = energy - self.base_ref
             counts = self.__get_molecule_counts(indices)
             for i,j in indices.items():
-                fitness -=  (self.references[i] * counts[i])
+                if(i in self.references):
+                    fitness -=  (self.references[i] * counts[i])
             for i,j in self.env[0].items():
-                fitness -= (len(indices[i]) * counts[j])
+                if(i in indices):
+                    fitness -= (len(indices[i]) * counts[j])
 
         return -fitness
 
