@@ -517,8 +517,6 @@ class GCGA:
                 pair_cor_max=0.7, mic=True)
         return comp.looks_like(atoms1,atoms2)
 
-
-
     def prepare(self, atoms):
             if( not isinstance(atoms.calc,SinglePointCalculator)):
                 return None

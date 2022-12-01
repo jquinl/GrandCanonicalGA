@@ -66,7 +66,6 @@ class Population:
         self.pop_stc.sort(key=lambda x:x.info['key_value_pairs']['raw_score'],reverse=True)
         stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
 
-
         self.dbi.update_to_relaxed(atoms)
         if(self.current_stc not in stcs):
             self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
@@ -199,8 +198,21 @@ class Population:
         """
         self.refresh_populations()
 
-        "How many times the same stoichiometry appears in the run"
-        
+        en_dic = {}
+        max_stc = 0
+        max_score = 0.0
+        plc = 0
+        current_stc = 0
+        for j,i in enumerate(self.pop_stc):
+            en_dic[i.info['key_value_pairs']['var_stc']] = i.info['key_value_pairs']['raw_score']
+            if(i.info['key_value_pairs']['raw_score']> max_score):
+                max_score = i.info['key_value_pairs']['raw_score']
+                max_stc = i.info['key_value_pairs']['var_stc']
+                plc = j
+            if(i.info['key_value_pairs']['var_stc'] == self.current_stc):
+                current_stc = j
+
+
         raw_scores = [ x.info['key_value_pairs']['raw_score'] for x in self.pop_stc]
         max_score = max(raw_scores)
         min_score = min(raw_scores)
@@ -209,14 +221,37 @@ class Population:
 
         T = min_score - max_score
 
-        
-        atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-            1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
-            1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
+        atoms.sort(key=lambda x: self.stc_distance(x,self.pop_stc[plc]) + self.stc_distance(x,self.pop_stc[current_stc]))
+        if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
+            return atoms[1],atoms[2]
+        elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
+            return atoms[1],atoms[0]
+        else:
+            return atoms[0],atoms[1]
+        #atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
+        #    1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
+        #    1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
 
+        #return atoms[0],atoms[1]
 
-
-        return atoms[0],atoms[1]
+    def stc_distance(self,at1,at2):
+        import math
+        d1 = at1.symbols.indices()
+        d2 = at2.symbols.indices()
+        d1_dist = {}
+        d2_dist = {}
+        for i,j in d1.items():
+            d1_dist[i] = len(j)
+            d2_dist[i] = 0
+        for i,j in d2.items():
+            d2_dist[i] = len(j)
+            if(i not in d1_dist.keys()):
+                d1_dist[i] = 0
+        suma = 0
+        for i in d1_dist.keys():
+            dd = (d1_dist[i] - d2_dist[i])**2
+            suma += dd
+        return math.sqrt(suma)
 
     def update_penalization(self,atoms1,atoms2):
         self.dbi.update_penalization(atoms1)
