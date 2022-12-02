@@ -115,6 +115,7 @@ class Population:
                 pair_cor_max=1.0, dE=0.5, mic=True)
         if comp.looks_like(a1,a2): return True
         return False
+
     def refresh_populations(self):
         ids = [x.info['key_value_pairs']['dbid'] for x in self.pop]
         self.pop = []
@@ -221,16 +222,15 @@ class Population:
 
         T = min_score - max_score
 
-        atoms.sort(key=lambda x: self.stc_distance(x,self.pop_stc[plc]) + self.stc_distance(x,self.pop_stc[current_stc]))
+        atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
+            1.0/sqrt(1.0 + self.stc_distance(x,self.pop_stc[plc])) * 
+            1.0/sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc])),reverse = True)
         if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
             return atoms[1],atoms[2]
         elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
             return atoms[1],atoms[0]
         else:
             return atoms[0],atoms[1]
-        #atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-        #    1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
-        #    1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])),reverse = True)
 
         #return atoms[0],atoms[1]
 
