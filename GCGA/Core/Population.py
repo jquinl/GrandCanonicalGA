@@ -202,14 +202,13 @@ class Population:
         en_dic = {}
         max_stc = 0
         max_score = 0.0
-        plc = 0
         current_stc = 0
         for j,i in enumerate(self.pop_stc):
             en_dic[i.info['key_value_pairs']['var_stc']] = i.info['key_value_pairs']['raw_score']
             if(i.info['key_value_pairs']['raw_score']> max_score):
                 max_score = i.info['key_value_pairs']['raw_score']
                 max_stc = i.info['key_value_pairs']['var_stc']
-                plc = j
+
             if(i.info['key_value_pairs']['var_stc'] == self.current_stc):
                 current_stc = j
 
@@ -223,8 +222,8 @@ class Population:
         T = min_score - max_score
 
         atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-            1.0/sqrt(1.0 + self.stc_distance(x,self.pop_stc[plc])) * 
-            1.0/sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc])),reverse = True)
+            0.5/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) * 
+            0.5/sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc])),reverse = True)
         if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
             return atoms[1],atoms[2]
         elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
