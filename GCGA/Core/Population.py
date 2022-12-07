@@ -80,7 +80,7 @@ class Population:
 
         if(len(self.pop_stc)<2):return False
 
-        if (np.random.random() < (self.stc_hop/ abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
+        if (np.random.random() < (self.stc_hop/ 0.001 + abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
             return True
 
         if(abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']) < 0.01 and self.stc_atempts > 10):
@@ -202,7 +202,7 @@ class Population:
         en_dic = {}
         max_stc = 0
         max_score = 0.0
-        current_stc = 0
+        current_stc_pos = 0
         for j,i in enumerate(self.pop_stc):
             en_dic[i.info['key_value_pairs']['var_stc']] = i.info['key_value_pairs']['raw_score']
             if(i.info['key_value_pairs']['raw_score']> max_score):
@@ -210,8 +210,7 @@ class Population:
                 max_stc = i.info['key_value_pairs']['var_stc']
 
             if(i.info['key_value_pairs']['var_stc'] == self.current_stc):
-                current_stc = j
-
+                current_stc_pos = j
 
         raw_scores = [ x.info['key_value_pairs']['raw_score'] for x in self.pop_stc]
         max_score = max(raw_scores)
@@ -223,7 +222,7 @@ class Population:
 
         atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
             0.5/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) * 
-            0.5/sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc])),reverse = True)
+            sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc_pos])),reverse = True)
         if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
             return atoms[1],atoms[2]
         elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
