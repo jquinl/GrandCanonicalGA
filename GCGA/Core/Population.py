@@ -221,8 +221,8 @@ class Population:
         T = min_score - max_score
 
         atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-            0.5/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) * 
-            sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc_pos])),reverse = True)
+            0.7/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) * 
+            0.3/sqrt(1.0 + 1.0/(1 + self.stc_distance(x,self.pop_stc[current_stc_pos]))),reverse = True)
         if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
             return atoms[1],atoms[2]
         elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
