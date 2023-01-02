@@ -251,8 +251,6 @@ class Population:
         else:
             return atoms[0],atoms[1]
 
-        #return atoms[0],atoms[1]
-
     def stc_distance(self,at1,at2):
         import math
         d1 = at1.symbols.indices()

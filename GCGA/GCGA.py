@@ -275,7 +275,7 @@ class GCGA:
                 debug_optput = ""
                 if(self.debug):print("--Changing sotichiometry at step {} try {}--".format(counter, maxcounter))
                 res = None
-                if(np.random.random() < 0.0):
+                if(np.random.random() < 0.5):
                     if(self.debug):print("----With cross operation")
                     a1,a2 = pop.get_better_candidates_stc()
                     subtries = 0
@@ -286,8 +286,10 @@ class GCGA:
                         subtries+=1
                 else:
                     if(self.debug):print("----By addition/removal")
-                    target_stc = pop.target_stc()
-                    a1 = pop.get_better_candidate()
+                    #target_stc = pop.target_stc()
+                    #a1 = pop.get_better_candidate()
+                    a1,a2 = pop.get_better_candidates_stc()
+                    target_stc = a2.info['key_value_pairs']['var_stc']
                     subtries = 0
                     while(res is None and subtries < 10):
                         current_stc = a1.info['key_value_pairs']['var_stc']
