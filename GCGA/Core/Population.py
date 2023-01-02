@@ -71,6 +71,7 @@ class Population:
             self.current_stc = self.pop_stc[0].info['key_value_pairs']['var_stc']
 
     def should_change_stc(self):
+        
         if(self.oldstc is None):
             self.oldstc  =  self.current_stc
         if(self.oldstc  ==  self.current_stc):
@@ -80,13 +81,31 @@ class Population:
 
         if(len(self.pop_stc)<2):return False
 
-        if (np.random.random() < (self.stc_hop/ 0.001 + abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']))):
-            return True
+        self.refresh_populations()
 
-        if(abs(self.pop[0].info['key_value_pairs']['raw_score'] - self.pop[-1].info['key_value_pairs']['raw_score']) < 0.01 and self.stc_atempts > 10):
-            return True
+        en_dic = {}
+        max_stc = 0
+        max_score = 0.0
+        min_score = 100000
+        current_stc_pos = 0
+        for j,i in enumerate(self.pop_stc):
+            en_dic[i.info['key_value_pairs']['var_stc']] = i.info['key_value_pairs']['raw_score']
 
-        return False
+            if(i.info['key_value_pairs']['raw_score']> max_score):
+                max_score = i.info['key_value_pairs']['raw_score']
+                max_stc = i.info['key_value_pairs']['var_stc']
+            if(i.info['key_value_pairs']['raw_score']< min_score):
+                min_score = i.info['key_value_pairs']['raw_score']
+
+        score_range = max_score-min_score
+
+        sc_range_high = (self.pop[0].info['key_value_pairs']['raw_score'] -min_score)/score_range
+        sc_range_low = (self.pop[-1].info['key_value_pairs']['raw_score'] -min_score)/score_range
+
+        if(self.pop[0].info['key_value_pairs']['var_stc'] == max_stc):
+            return np.random.random() * 1.0 > sc_range_high - sc_range_low
+
+        return np.random.random() * 1.0 > sc_range_high
 
     def target_stc(self):
         stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
@@ -221,8 +240,10 @@ class Population:
         T = min_score - max_score
 
         atoms.sort(key=lambda x: (0.5 * (1. - tanh(2. * (x.info['key_value_pairs']['raw_score']-max_score)/ T - 1.))) *
-            0.7/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) * 
-            0.3/sqrt(1.0 + 1.0/(1 + self.stc_distance(x,self.pop_stc[current_stc_pos]))),reverse = True)
+            1.0/sqrt(1.0 + x.info['key_value_pairs']['parent_penalty']) * 
+            1.0/sqrt(1.0 + self.dbi.confid_count(x.info['key_value_pairs']['confid'])) *
+            1.1/sqrt(1.0 + self.stc_distance(x,self.pop_stc[max_stc])) *
+            0.9/sqrt(1.0 + self.stc_distance(x,self.pop_stc[current_stc_pos])) ,reverse = True)
         if(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc and len(atoms)>2):
             return atoms[1],atoms[2]
         elif(atoms[0].info['key_value_pairs']['var_stc'] == self.current_stc):
@@ -265,4 +286,3 @@ class Population:
                 return at.info['key_value_pairs']['confid']
         self.confid += 1
         return self.confid
-
