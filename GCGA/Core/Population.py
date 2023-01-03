@@ -18,6 +18,7 @@ class Population:
         self.stc_hop = stc_hopping
         self.stc_atempts = 0
         self.oldstc = None
+
     def initialize_population(self):
         self.change_current_stc(self.pop_stc[0].info['key_value_pairs']['var_stc'])
 
@@ -102,21 +103,10 @@ class Population:
         sc_range_high = (self.pop[0].info['key_value_pairs']['raw_score'] -min_score)/score_range
         sc_range_low = (self.pop[-1].info['key_value_pairs']['raw_score'] -min_score)/score_range
 
-        if(self.pop[0].info['key_value_pairs']['var_stc'] == max_stc):
+        if(self.current_stc == max_stc):
             return np.random.random() * 1.0 > sc_range_high - sc_range_low
 
         return np.random.random() * 1.0 > sc_range_high
-
-    def target_stc(self):
-        stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
-        if(np.random.random() < 0.1):
-                random.shuffle(stcs)
-                if(len(stcs) == 1):return stcs[0]
-                if(stcs[0]== self.current_stc): return stcs[1]
-                return stcs[0]
-        a1,a2  = self.get_better_candidates_stc()
-        if(a1.info['key_value_pairs']['var_stc'] == self.current_stc  ): return a2.info['key_value_pairs']['var_stc']
-        return a1.info['key_value_pairs']['var_stc']
 
     def change_current_stc(self,stc):
         self.current_stc = stc
