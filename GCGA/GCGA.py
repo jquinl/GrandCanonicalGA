@@ -223,7 +223,7 @@ class GCGA:
     def run(self):
         self.evalnum = 0
         db = DBI(self.db_name)
-        pop = Population(self.pop_size,db)
+        pop = Population(self.pop_size,db,self.steps)
         starting_pop = []
         for i in self.combination_matrix:
             for j in range(self.starting_candidates):
@@ -233,25 +233,24 @@ class GCGA:
 
         #--------------------------------Generate initial population---------------------------------"
 
+        count = 0
         for i in starting_pop:
             at = self.prepare_candidate(i)
             db.add_unrelaxed_candidate(at)
 
         #---------------------------------Relax initial structures-----------------------------------"
-        count = 0
-        while db.get_number_of_unrelaxed_candidates() > 0:
+            while db.get_number_of_unrelaxed_candidates() > 0:
+                atoms = db.get_first_unrelaxed()
+                atoms = self.relax(atoms)
+                if(self.is_fitness_an_object):
+                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+                else:
+                    atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
 
-            atoms = db.get_first_unrelaxed()
-            atoms = self.relax(atoms)
-            if(self.is_fitness_an_object):
-                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
-            else:
-                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-
-            self.append_to_file(atoms)
-            pop.update_population(atoms)
-            if(self.debug): write("debug/random_eval_{}_{}.traj".format(count,atoms.symbols),atoms)
-            count+=1
+                pop.update_population(atoms)
+                self.append_to_file(atoms)
+                if(self.debug): write("debug/random_eval_{}_{}.traj".format(count,atoms.symbols),atoms)
+                count+=1
 
         #------------Time-----------------
         cross_time_total = 0
@@ -265,7 +264,6 @@ class GCGA:
 
         counter = 0
         maxcounter = 0
-        pop.initialize_population()
         while counter < steps and maxcounter < maxtries:
             maxcounter += 1
             a1=None
@@ -277,10 +275,11 @@ class GCGA:
                 res = None
                 if(np.random.random() < 0.5):
                     if(self.debug):print("----With cross operation")
-                    a1,a2 = pop.get_better_candidates_stc()
+                    a2,disc = pop.get_better_candidates()
+                    a1,disc = pop.get_better_candidates_stc()
                     subtries = 0
                     while(res is None and subtries < 10):
-                        res = self.crossing_operator.cross(self.slab,a2,a1,self.blmin)
+                        res = self.crossing_operator.cross(self.slab,a1,a2,self.blmin)
                         res = self.prepare_candidate(res)
                         debug_optput += " {}".format(subtries)
                         subtries+=1
@@ -288,7 +287,8 @@ class GCGA:
                     if(self.debug):print("----By addition/removal")
                     #target_stc = pop.target_stc()
                     #a1 = pop.get_better_candidate()
-                    a1,a2 = pop.get_better_candidates_stc()
+                    a1,disc = pop.get_better_candidates()
+                    a2,disc = pop.get_better_candidates_stc()
                     target_stc = a2.info['key_value_pairs']['var_stc']
                     subtries = 0
                     while(res is None and subtries < 10):
@@ -313,11 +313,11 @@ class GCGA:
                         else:
                             write("debug/stc_chg_op_{0}_{1}_{2}.traj".format(res.symbols,counter,maxcounter),[a1,a2,res])
 
-                    pop.change_current_stc(res.info['stc'])
+                    #pop.change_current_stc(res.info['stc'])
                     db.add_unrelaxed_candidate(res)
                 else:
                     if(self.debug):
-                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(counter,maxcounter,chg_time))
+                        print("""Crossing at step FAILURE at {0} try {1}  took {2} s""".format(counter,maxcounter,chg_time))
             else:
                 debug_optput = ""
                 a1,a2 = pop.get_better_candidates()
@@ -349,7 +349,7 @@ class GCGA:
                     db.add_unrelaxed_candidate(res)
                 else:
                     if(self.debug):
-                        print("""Crossing at step FAILURE at {0} try {1}  took {3} s""".format(counter,maxcounter,cross_time))
+                        print("""Crossing at step FAILURE at {0} try {1}  took {2} s""".format(counter,maxcounter,cross_time))
 
             while db.get_number_of_unrelaxed_candidates() > 0:
                 atoms = db.get_first_unrelaxed()
@@ -359,11 +359,14 @@ class GCGA:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
                 else:
                     atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+                if(self.debug):print("candidate evaluated")
                 self.append_to_file(atoms)
+                if(self.debug):print("candidate appended to file")
                 pop.update_population(atoms)
+                if(self.debug):print("candidate added to population")
                 if(self.debug):
                     print("New candidate evaluated with a score of {}  at step {} try {}".format(atoms.info['key_value_pairs']['raw_score'],counter,maxcounter))
-                    if(self.debug): write("debug/run_eval_{}_{}.traj".format(counter,maxcounter),atoms)
+                    write("debug/run_eval_{}_{}.traj".format(counter,maxcounter),atoms)
 
         print("Exited run loop after {0} steps and {1} tries".format(counter,maxcounter))
         if(self.debug):print("Crossing operations took a total of {} s:".format(cross_time_total))

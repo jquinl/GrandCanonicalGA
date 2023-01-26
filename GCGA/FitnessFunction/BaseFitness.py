@@ -100,6 +100,12 @@ class GibbsFreeEnergy(BaseFitness):
                 self.references[i] = 0.0
             if(i not in self.env[0].keys()):
                 self.env[0][i] = 0.0
+        for i in self.references.keys():
+            if i not in indices.keys():
+                indices[i] = []
+        for i in self.env[0].keys():
+            if i not in indices.keys():
+                indices[i] = []
 
     def __get_refs(self,references):
         if(type(references) is not dict):raise TypeError("references is not a string:float dictionary")

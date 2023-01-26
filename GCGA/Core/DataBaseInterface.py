@@ -1,6 +1,6 @@
 from pathlib import Path
 from math import tanh, sqrt, exp
-
+from ase.ga.standard_comparators import InteratomicDistanceComparator
 from ase.db import connect
 class DataBaseInterface:
 
@@ -9,6 +9,7 @@ class DataBaseInterface:
 
         self.db_name =self.__get_db_name(db_name)
         self.db = connect(self.db_name)
+        self.confid = 0
 
     def add_unrelaxed_candidate(self,atoms):
         try:
@@ -91,17 +92,22 @@ class DataBaseInterface:
             atoms.append(self.get_atoms_from_id(i))
         return list(atoms)
 
-    def get_other_confids_atoms(self,confids):
-        popids = []
-        for i in confids:
-            popids.extend(self.get_ids_from_confid(i))
+    def get_atom_confid(self,atom):
+        compare_ids = []
+        for i in range(self.confid + 1):
+            ids = self.get_ids_from_confid(i)
+            if(len(ids)>0):
+                compare_ids.append(ids[0])
+        for i in compare_ids:
+            cmp = self.get_atoms_from_id(i)
+            if(self.get_similarity(atom,cmp)):
+                return cmp.info['key_value_pairs']['confid']
 
-        allids = self.get_all_relaxed_ids()
-        finalids = [i for i in allids if i not in popids]
-        atoms = []
-        for i in finalids:
-            atoms.append(self.get_atoms_from_id(i))
-        return list(atoms)
+        return self.new_confid()
+
+    def new_confid(self):
+        self.confid += 1
+        return self.confid
 
 
     def get_all_unrelaxed_ids(self):
@@ -211,3 +217,11 @@ class DataBaseInterface:
         if Path(db_name ).is_file():
             Path(db_name ).unlink()
         return db_name
+
+    def get_similarity(self,a1,a2):
+        if(a1.info['key_value_pairs']['var_stc'] != a2.info['key_value_pairs']['var_stc']) :return False
+
+        comp = InteratomicDistanceComparator(n_top=len(a1), pair_cor_cum_diff=0.015,
+                pair_cor_max=0.5, dE=0.15, mic=True)
+        if comp.looks_like(a1,a2): return True
+        return False
