@@ -23,21 +23,11 @@ class Population:
 
         atoms.info['key_value_pairs']['confid'] = self.dbi.get_atom_confid(atoms)
 
-        if(len(self.pop) < 2):
+        if(len(self.pop)<self.pop_size):
             self.pop.append(atoms)
-
         else:
-            confids = [a.info['key_value_pairs']['confid'] for a in self.pop ]
-            if(atoms.info['key_value_pairs']['confid'] in confids):
-                for i,at in enumerate(self.pop):
-                    if(at.info['key_value_pairs']['confid'] == atoms.info['key_value_pairs']['confid'] and
-                    atoms.info['key_value_pairs']['raw_score'] > at.info['key_value_pairs']['raw_score'] ):
-                        self.pop[i] = atoms
-            elif(len(self.pop) < self.pop_size):
-                self.pop.append(atoms)
-            else:
-                if(self.pop[-1].info['key_value_pairs']['raw_score'] < atoms.info['key_value_pairs']['raw_score']):
-                    self.pop[-1] = atoms
+            if(self.pop[-1].info['key_value_pairs']['raw_score'] < atoms.info['key_value_pairs']['raw_score']):
+                self.pop[-1] = atoms
 
         self.pop.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
 
@@ -62,10 +52,21 @@ class Population:
         if(len(self.pop)<2): return False
 
         self.refresh_populations()
+        
+        max_stc = 0
+        max_score = 0.0
+        for j,i in enumerate(self.pop_stc):
+            if(i.info['key_value_pairs']['raw_score']> max_score):
+                max_score = i.info['key_value_pairs']['raw_score']
+                max_stc = i.info['key_value_pairs']['var_stc']
 
+
+        max_stc_dist = float(max([self.stc_distance(x,self.pop_stc[max_stc]) for x in self.pop_stc]))
+
+        dist = self.stc_distance(self.pop[0],self.pop_stc[max_stc]) / max_stc_dist
         proportion = float(len(self.dbi.get_ids_from_stc(self.current_stc))) / float(len(self.dbi.get_relaxed_candidates())+1)
 
-        should_change = np.random.random() * 1.5 * (1.0 + self.ctr/self.steps) < (proportion + (self.stc_atempts * 0.01))
+        should_change = np.random.random() * (2.0-dist) * (1.0 + self.ctr/self.steps) < (proportion + (self.stc_atempts * 0.01))
         if(self.stc_atempts <5):
             should_change =  False
         if(should_change):
@@ -79,20 +80,11 @@ class Population:
         self.current_stc = stc
         all_atoms =  self.dbi.get_atoms_with_stc(stc)
         all_atoms.sort(key=lambda x:(x.info['key_value_pairs']['raw_score']),reverse = True)
-        new_pop = []
-        confids = []
 
-        for at in all_atoms:
-            if(not at.info['key_value_pairs']['confid']):
-                new_pop.append(at)
-                confids.append(at.info['key_value_pairs']['confid'])
-        if(len(new_pop)<2):
-            if(len(all_atoms) > 1):
-                new_pop = all_atoms[:2]
-        if(len(new_pop) < self.pop_size):
-            self.pop= new_pop
+        if(len(all_atoms) < self.pop_size):
+            self.pop= all_atoms
         else:
-            self.pop = new_pop[:self.pop_size]
+            self.pop = all_atoms[:self.pop_size]
 
     def refresh_populations(self):
         ids = [x.info['key_value_pairs']['dbid'] for x in self.pop]
@@ -114,22 +106,21 @@ class Population:
         """
         self.refresh_populations()
 
-        "How many times the same stoichiometry appears in the run"
+        indices = list(range(len(self.pop)))
 
         raw_scores = [ x.info['key_value_pairs']['raw_score'] for x in self.pop]
         max_score = max(raw_scores)
         min_score = min(raw_scores)
 
-        atoms = [at.copy() for at in self.pop]
         T = min_score - max_score
 
-        if(T == 0.0): T = 1.0
+        if(T == 0.0000): T = 1.0
 
-        fit = []
-        for at in atoms:
-            fit.append(0.5 * (1. - tanh(2. * (at.info['key_value_pairs']['raw_score']-max_score)/ T - 1.)) *
-            (1.0/sqrt(1.0 + at.info['key_value_pairs']['parent_penalty'])) * 
-            (1.0/sqrt(1.0 + len(self.dbi.get_ids_from_confid(at.info['key_value_pairs']['confid'])))))
+        f = [float(0.5 * (1. - tanh(2. * (raw_scores[i] - max_score) / T - 1.))) for i in indices]
+        P = [float(self.pop[i].info['key_value_pairs']['parent_penalty']) for i in indices]
+        S = [float(len(self.dbi.get_ids_from_confid(self.pop[i].info['key_value_pairs']['confid']))) for i in indices]
+
+        fit = [(f[i] * 1. / sqrt(1. + P[i]) * 1. / sqrt(1. + S[i])) for i in range(len(f))]
         return fit
 
     def get_better_candidates(self):
@@ -140,13 +131,11 @@ class Population:
 
         c1 = atoms[0]
         c2 = atoms[0]
-        if(len(atoms)>1):
-            c2 = atoms[1]
         pairs = (0,0)
         used_before = False
-        print([a.info['key_value_pairs']['confid'] for a in atoms])
+
         tries = 0
-        while not used_before and tries < 100:
+        while c1.info['key_value_pairs']['dbid'] == c2.info['key_value_pairs']['dbid'] or used_before:
             tries +=1
             nnf = True
             while nnf:
@@ -161,14 +150,13 @@ class Population:
                     c2 = atoms[t]
                     nnf = False
 
-            c1id = c1.info['key_value_pairs']['confid']
-            c2id = c2.info['key_value_pairs']['confid']
+            c1id = c1.info['key_value_pairs']['dbid']
+            c2id = c2.info['key_value_pairs']['dbid']
             pairs = (min([c1id, c2id]), max([c1id, c2id]))
             used_before = pairs in self.pairs
 
         self.pairs.append(pairs)
         return c1,c2
-
 
     def get_better_candidates_stc(self):
         """Calculates the fitness using the formula from
