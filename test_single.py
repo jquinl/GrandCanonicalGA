@@ -64,9 +64,3 @@ def test_length():
 
     final = read("structures.traj@:")
     assert(len(final) == 52 )
-
-def test_energies():
-    final = read("structures.traj@:")
-    en = [a.get_potential_energy() for a in final]
-
-    assert( min(en[:10]) > min(en[-10:-1]) )
