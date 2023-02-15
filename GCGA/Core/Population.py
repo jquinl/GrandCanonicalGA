@@ -60,6 +60,7 @@ class Population:
                 max_score = i.info['key_value_pairs']['raw_score']
                 max_stc = i.info['key_value_pairs']['var_stc']
 
+        if(len(self.pop_stc) < 2): return False
 
         max_stc_dist = float(max([self.stc_distance(x,self.pop_stc[max_stc]) for x in self.pop_stc]))
 
