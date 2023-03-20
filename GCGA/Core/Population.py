@@ -211,7 +211,7 @@ class Population:
         while next_stc == self.current_stc:
             next_stc = abs(int(np.random.normal(0,scale=scl)))%len(self.pop_stc)
 
-        print([at.symbols for at in atoms])
+       
         return atoms[next_stc],atoms[(next_stc+1) % len(self.pop_stc)]
 
     def stc_distance(self,at1,at2):
