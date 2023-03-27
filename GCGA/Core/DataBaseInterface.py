@@ -28,6 +28,7 @@ class DataBaseInterface:
                 atoms.info['key_value_pairs']['dbid']
         except KeyError:
             raise Exception("No dbid Parameter found in fetched atoms")
+        return dbid
 
 
     def update_to_relaxed(self, atoms):

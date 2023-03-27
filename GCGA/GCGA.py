@@ -67,6 +67,14 @@ class GCGA:
         #--------File Management----------------
         self.db_name = db_name
 
+        if(restart_filename is not None and os.path.isfile(restart_filename) and structures_filename == restart_filename):
+            old_atoms = read(restart_filename+"@:")
+            restart_filename = "restart_" + restart_filename
+            if(len(old_atoms)>0):
+                write(restart_filename,old_atoms)
+
+        self.restart_filename = restart_filename
+
         if isinstance(structures_filename, str):
             self.filename = structures_filename
             "This performs a hard overwrite, change it later in order to include restarts"
@@ -83,14 +91,15 @@ class GCGA:
         #--------Run length parameters----------------
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
-        self.restart_filename = restart_filename
+
         self.evalnum = 0
 
         self.debug = debug
-        if os.path.exists('debug/'):
-            pass
-        else:
-            os.mkdir('debug')
+        if (self.debug):
+            if os.path.exists('debug/'):
+                pass
+            else:
+                os.mkdir('debug')
 
 #--------Functions only called during initialization---------------
     def _get_variable_types(self,types) -> List[Atoms]:
@@ -262,21 +271,24 @@ class GCGA:
                     print("No atoms in restart_filename")
                     return
                 for i,atoms in enumerate(atomslist):
-                    if atoms.cell == self.slab.cell:
+                    if (atoms.cell == self.slab.cell).all():
                         try:
                             E = atoms.get_potential_energy()
                             F = atoms.get_forces()
                             results = {'energy': E,'forces': F}
-                            atoms = self.prepare_candidate(atoms)
-                            db.add_unrelaxed_candidate(at)
                             calc_sp = SinglePointCalculator(atoms, **results)
+                            atoms = self.prepare_candidate(atoms)
+                            dbid = db.add_unrelaxed_candidate(atoms)
+                            atoms = db.get_atoms_from_id(dbid)
                             atoms.calc = calc_sp
                             if(self.is_fitness_an_object):
                                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
                             else:
                                 atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
-                            pop.update_population(atoms)
+                            pop.update_population(atoms,increase_counter=False)
                             self.append_to_file(atoms)
+
+                            print("Added atoms object #{} from {} to population".format(i,self.restart_filename))
                         except:
                             print("Could not add supplied atoms #{} for restart".format(i))
             restart()

@@ -16,7 +16,7 @@ class Population:
         self.ctr = 0
         self.steps = steps
 
-    def update_population(self,atoms):
+    def update_population(self,atoms,increase_counter=True):
         stc = atoms.info['key_value_pairs']['var_stc']
         if(self.current_stc != stc):
             self.change_current_stc(stc)
@@ -46,7 +46,8 @@ class Population:
         self.pop_stc.sort(key=lambda x:x.info['key_value_pairs']['raw_score'],reverse=True)
         stcs = [i.info['key_value_pairs']['var_stc'] for i in self.pop_stc]
         self.dbi.update_to_relaxed(atoms)
-        self.ctr+=1
+        if increase_counter:
+            self.ctr+=1
 
     def should_change_stc(self):
         if(len(self.pop)<2): return False
