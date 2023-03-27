@@ -40,7 +40,7 @@ class GCGA:
                 initial_structure_generator = RCG, crossing_operator = CO, stc_change_operator = CHG,
                 mutations = None,mutation_chance=0.3,
                 steps = 1000,maxtries = 10000,
-                restart=False,restart_filename=None,debug=False
+                restart_filename=None,debug=False
                 ):
 
         #--------Population settings----------------
@@ -83,7 +83,6 @@ class GCGA:
         #--------Run length parameters----------------
         self.steps = steps
         self.maxtries = max(steps*10,maxtries)
-        self.restart = restart
         self.restart_filename = restart_filename
         self.evalnum = 0
 
@@ -252,6 +251,36 @@ class GCGA:
                 if(self.debug): write("debug/random_eval_{}_{}.traj".format(count,atoms.symbols),atoms)
                 count+=1
 
+        #Restart
+        if self.restart_filename is not None and os.path.isfile(self.restart_filename):
+            def restart():
+                atomslist = list(read(self.restart_filename + "@:"))
+                if(not isinstance(atomslist,list)): 
+                    print("No restart_filename is not a list of atoms objects")
+                    return
+                if(len(atomslist) == 0 ):
+                    print("No atoms in restart_filename")
+                    return
+                for i,atoms in enumerate(atomslist):
+                    if atoms.cell == self.slab.cell:
+                        try:
+                            E = atoms.get_potential_energy()
+                            F = atoms.get_forces()
+                            results = {'energy': E,'forces': F}
+                            atoms = self.prepare_candidate(atoms)
+                            db.add_unrelaxed_candidate(at)
+                            calc_sp = SinglePointCalculator(atoms, **results)
+                            atoms.calc = calc_sp
+                            if(self.is_fitness_an_object):
+                                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function.evaluate(self.slab,atoms)
+                            else:
+                                atoms.info['key_value_pairs']['raw_score'] = self.fitness_function(atoms)
+                            pop.update_population(atoms)
+                            self.append_to_file(atoms)
+                        except:
+                            print("Could not add supplied atoms #{} for restart".format(i))
+            restart()
+
         #------------Time-----------------
         cross_time_total = 0
         cross_time = 0
@@ -391,18 +420,6 @@ class GCGA:
     def append_to_file(self,atoms):
         if(self.trajfile is not None):
             self.trajfile.write(atoms)
-
-    def restart_run(self):
-        atomslist = list(read(self.restart_filename + "@:"))
-        if(not isinstance(atomslist,list)): return None
-        pdb = PDB(self.slab,self.atomic_types,self.atomic_ranges,self.crossing_operator.ratio_of_covalent_radii,self.crossing_operator.rng)
-        returnatoms = []
-        for atoms in atomslist:
-            if(isinstance(atoms.calc,SinglePointCalculator)):
-                returnatoms.append(pdb.prepare(atoms))
-        if(len(returnatoms) == 0): return None
-        if(len(returnatoms) != len(atoms)): print("Not all atoms in {} were included in the run".format(self.restart_filename))
-        return list(returnatoms)
 
     def relax(self,atoms):
         results = None
